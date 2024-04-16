@@ -68,6 +68,14 @@ with __name__ == '__main__':
                         default=1.0,
                         type=float,
                         help='attenuation of velocity input')
+    parser.add_argument('--hid_sigma',
+                        default=0.0,
+                        type=float,
+                        help='standard deviation of noise in neurons')
+    parser.add_argument('--hid_scale',
+                        default=1.0,
+                        type=float,
+                        help='attenuation of neurons')
     parser.add_argument('--DoG',
                         default=True,
                         help='use difference of gaussians tuning curves')
