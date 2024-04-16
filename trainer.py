@@ -71,7 +71,6 @@ class Trainer(object):
             n_steps: Number of training steps
             save: If true, save a checkpoint after each epoch.
         '''
-
         # Construct generator
         gen = self.trajectory_generator.get_generator()
 
@@ -90,8 +89,7 @@ class Trainer(object):
                 # Save checkpoint
                 ckpt_path = os.path.join(self.ckpt_dir, 'epoch_{}.pth'.format(epoch_idx))
                 torch.save(self.model.state_dict(), ckpt_path)
-                torch.save(self.model.state_dict(), os.path.join(self.ckpt_dir,
-                                                                 'most_recent_model.pth'))
+                torch.save(self.model.state_dict(), os.path.join(self.ckpt_dir,'most_recent_model.pth'))
 
             # write out loss and error; updated every epoch
             np.save(os.path.join(self.ckpt_dir, 'loss.npy'), np.array(self.loss))
