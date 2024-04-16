@@ -15,15 +15,15 @@ class RNN(torch.nn.Module):
         self.vel_scale = options.vel_scale
         self.hid_sigma = options.hid_sigma
         self.hid_scale = options.hid_scale
-        
+
         self.device = options.device
 
         # Input weights
         self.encoder = torch.nn.Linear(self.Np, self.Ng, bias=False)
 
         # RNN
-        self.input_stream = torch.nn.Linear(2, self.Ng, bias=False)
-        self.hiddn_stream = torch.nn.Linear(self.Ng, self.Ng, bias=False)
+        self.vel_stream = torch.nn.Linear(2, self.Ng, bias=False)
+        self.hid_stream = torch.nn.Linear(self.Ng, self.Ng, bias=False)
         self.relu = torch.nn.ReLU()
 
         # Linear read-out weights
@@ -44,36 +44,36 @@ class RNN(torch.nn.Module):
         '''
         Compute grid cell activations.
         Args:
-            inputs: Batch of 2d velocity inputs with shape [batch_size, sequence_length, 2].
+            inputs: Tuple of velocity input and the initial state for RNN ([sequence_length, batch_size, 2], [batch_size, Ng]).
 
         Returns: 
-            g: Batch of grid cell activations with shape [batch_size, sequence_length, Ng].
+            g: Batch of grid cell activations with shape [sequence_length, batch_size, Ng].
         '''
         vt, p0 = inputs
-        assert vt.shape[1] == self.sequence_length and vt.shape[2] == 2
-        assert p0.shape[1] == self.sequence_length and p0.shape[2] == 2
+        assert vt.shape[0] == self.sequence_length and vt.shape[2] == 2, vt.shape
 
-        g = self.encoder(p0)[None]
-        for v in torch.unbind(vt, dim=1):
+        h = self.encoder(p0)
+        g = torch.zeros(vt.shape[0], vt.shape[1], self.Ng, device=self.device)
+        for i, v in enumerate(vt):
             vp = self.vel_scale * v + self.vel_sigma * torch.randn(v.shape,device=self.device)
-            gp = self.hid_scale * g + self.hid_sigma * torch.randn(g.shape,device=self.device)
-            i = self.input_stream(vp)
-            h = self.hiddn_stream(gp)
-            g = self.relu(h + i)
+            hp = self.hid_scale * h + self.hid_sigma * torch.randn(h.shape,device=self.device)
+            vs = self.vel_stream(vp)
+            hs = self.hid_stream(hp)
+            h = self.relu(vs + hs)
+            g[i] = h
         return g
 
     def predict(self, inputs:Tuple[torch.Tensor,torch.Tensor]):
         '''
         Predict place cell code.
         Args:
-            inputs: Batch of 2d velocity inputs with shape [batch_size, sequence_length, 2].
+            inputs: Tuple of velocity input and the initial state for RNN ([sequence_length, batch_size, 2], [batch_size, Ng]).
 
         Returns: 
             place_preds: Predicted place cell activations with shape 
-                [batch_size, sequence_length, Np].
+                [sequence_length, batch_size, Np].
         '''
         place_preds = self.decoder(self.g(inputs))
-        
         return place_preds
 
 
@@ -84,10 +84,9 @@ class RNN(torch.nn.Module):
         '''
         Compute avg. loss and decoding error.
         Args:
-            inputs: Batch of 2d velocity inputs with shape [batch_size, sequence_length, 2].
-            pc_outputs: Ground truth place cell activations with shape 
-                [batch_size, sequence_length, Np].
-            pos: Ground truth 2d position with shape [batch_size, sequence_length, 2].
+            inputs: Tuple of velocity input and the initial state for RNN ([sequence_length, batch_size, 2], [batch_size, Ng]).
+            pc_outputs: Ground truth place cell activations with shape [sequence_length, batch_size, Np].
+            pos: Ground truth 2d position with shape [sequence_length, batch_size, 2].
 
         Returns:
             loss: Avg. loss for this training batch.
@@ -99,7 +98,7 @@ class RNN(torch.nn.Module):
         loss = -(y*torch.log(yhat)).sum(-1).mean()
 
         # Weight regularization 
-        loss += self.weight_decay * (self.hiddn_stream.weight**2).sum()
+        loss += self.weight_decay * (self.hid_stream.weight**2).sum()
 
         # Compute decoding error
         pred_pos = self.place_cells.get_nearest_cell_pos(preds)
