@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# copied from https://github.com/ganguli-lab/grid-pattern-formation/blob/master/place_cells.py
 import numpy as np
 import torch
 import scipy

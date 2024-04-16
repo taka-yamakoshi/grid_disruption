@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# copied from https://github.com/ganguli-lab/grid-pattern-formation/blob/master/trajectory_generator.py
 import torch
 import os
 import numpy as np
