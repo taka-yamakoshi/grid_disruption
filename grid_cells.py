@@ -2,6 +2,8 @@ from typing import Tuple
 import scipy
 import numpy as np
 
+from multiprocessing import Pool
+
 class GridCells(object):
     def __init__(self,
                  symmetry:int = 6,
@@ -81,3 +83,10 @@ class GridCells(object):
         mat = mat[self.res//2:-self.res//2, self.res//2:-self.res//2]
 
         return mat
+
+    def run(self, nsamples:int = 1024):
+        arg = [(0,) for _ in range(nsamples)]
+        with Pool(processes=64) as p:
+            activations = p.starmap(self.generate,arg)
+        activations = np.array(activations)
+        return activations
