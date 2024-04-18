@@ -150,7 +150,7 @@ class GridScorer(object):
             return r0, r1, r2, message, max_freq, max_phase, score_60, score_90
 
     def run(self, options:object, activations:np.ndarray, perturbation:Union[Tuple[float,float],None]=None):
-        arg = [(act,options) for act in activations]
+        arg = [(act,) for act in activations]
         with Pool(processes=64) as p:
             results = p.starmap(self.calc_score,arg)
 
