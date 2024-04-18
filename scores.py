@@ -89,9 +89,10 @@ class GridScorer(object):
         crad = scipy.ndimage.gaussian_filter(crad,sigma=5*step/step_new) # smooth by sigma=5 times the original binsize
 
         r0, r1, r2, message = self._get_peaks(crad)
-        r0 = r0 * step_new
-        r1 = r1 * step_new
-        r2 = r2 * step_new
+        if message=='--':
+            r0 = r0 * step_new
+            r1 = r1 * step_new
+            r2 = r2 * step_new
         return crad, r0, r1, r2, message
 
     def _get_peaks(self, crad:np.ndarray):
