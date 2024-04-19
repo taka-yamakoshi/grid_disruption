@@ -118,7 +118,7 @@ class GridScorer(object):
 
     def calc_cpol(self, sac:np.ndarray, r1:float, r2:float):
 
-        dbins, step = np.linspace(-180,175,72,retstep=True)
+        dbins, step = np.linspace(-180,177,120,retstep=True)
         cpol = np.zeros(dbins.shape)
         nan_loc = []
         for i, d in enumerate(dbins):
@@ -137,7 +137,7 @@ class GridScorer(object):
         sac = self.calc_sac(x)
         crad, r0, r1, r2, message = self.calc_crad(sac)
         if message!='--':
-            return r0, r1, r2, message, 0, 0, 0, 0
+            return r0, r1, r2, message, 0, 0, 0, 0, crad, 0, 0
         else:
             cpol = self.calc_cpol(sac,r1,r2)
             ftcpol = np.fft.fft(cpol)
@@ -148,7 +148,7 @@ class GridScorer(object):
             score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol))/score_norm
             score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol))/score_norm
             
-            return r0, r1, r2, message, max_freq, max_phase, score_60, score_90
+            return r0, r1, r2, message, max_freq, max_phase, score_60, score_90, crad, cpol, 2*(abs(ftcpol)**2)[:10]/len(cpol)/score_norm
 
     def run(self, options:object, activations:np.ndarray, perturbation:Union[Tuple[float,float],None]=None):
         arg = [(act,) for act in activations]
@@ -164,3 +164,53 @@ class GridScorer(object):
             writer.writerow(['neuron_id','r0','r1','r2','message','max_freq','max_phase','score_60','score_90'])
             for nid, line in enumerate(results):
                 writer.writerow([str(nid)] + [str(item) for item in line])
+
+    #def get_diff(self, mat:np.ndarray):
+    #    diff_all = np.zeros((mat.shape[0]-2,mat.shape[1]-2,4))
+    #    diff_d = mat[:-1,:] - mat[1:,:]
+    #    diff_u = mat[1:,:] - mat[:-1,:]
+    #    diff_r = mat[:,:-1] - mat[:,1:]
+    #    diff_l = mat[:,1:] - mat[:,:-1]
+
+    #    diff_all[:,:,0] = diff_d[1:,1:-1]
+    #    diff_all[:,:,1] = diff_u[:-1,1:-1]
+    #    diff_all[:,:,2] = diff_r[1:-1,1:]
+    #    diff_all[:,:,3] = diff_l[1:-1,:-1]
+    #    diff = np.all(diff_all>0,axis=-1)
+    #    return diff
+
+    def calc_score_new(self, x:np.ndarray):
+        assert x.shape[0] == x.shape[1]
+        res = x.shape[0]
+        w = res//20
+
+        fpx  = np.abs(np.fft.fftshift(np.fft.fft2(x)))**2
+        cx, cy =np.argwhere(fpx==fpx.max())[0]
+        fpx[cx,cy] = 0
+        mat = fpx[cx-w:-cx+w+1,cy-w:-cy+w+1]
+
+        xnew, ynew =  np.meshgrid(np.linspace(0,mat.shape[0]-1,2*res-1), np.linspace(0,mat.shape[1]-1,2*res-1))
+        interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat)
+        mat = interp((xnew,ynew))
+
+        sigma = w//2
+        mat = scipy.ndimage.gaussian_filter(mat,sigma=sigma)
+
+        #diff = self.get_diff(mat)
+
+        #peak_vals = mat[1:-1,1:-1][diff]
+        #peak_locs = np.argwhere(diff)[peak_vals > np.max(mat)*0.9]
+        #intensity = 0
+        #for peak in peak_locs:
+        #    intensity += np.sum(mat[peak[0]-2*sigma:peak[0]+2*sigma,peak[1]-2*sigma:peak[1]+2*sigma])
+
+        cpol = self.calc_cpol(mat, 0, res*0.7)
+        ftcpol = np.fft.fft(cpol)
+        max_freq = np.argmax(abs(ftcpol)[1:36])+1 # Find frequency with maximum power
+        max_phase = np.angle(ftcpol[max_freq],deg=True) # Find the corresponding phase
+
+        score_norm = np.sum(cpol**2) - (cpol.sum()**2)/len(cpol) # Calculate the denominator for the grid score
+        score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol))/score_norm
+        score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol))/score_norm
+
+        return max_freq, max_phase, score_60, score_90, cpol, 2*(abs(ftcpol)**2)[:10]/len(cpol)/score_norm
