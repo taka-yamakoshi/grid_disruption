@@ -50,8 +50,8 @@ class GridCells(object):
         intervals = np.round(intervals).astype(int)
         return intervals
     
-    def generate(self, tmp):
-        angle = np.random.rand()*360 # sample the rotation angle
+    def generate(self, seed):
+        angle = np.random.rand(seed=seed)*360 # sample the rotation angle
         mres = 2*self.res # increase resolution by 2
         mat = np.zeros((mres, mres))
         if self.symmetry == 2:
@@ -85,7 +85,7 @@ class GridCells(object):
         return mat
 
     def run(self, nsamples:int = 1024):
-        arg = [(0,) for _ in range(nsamples)]
+        arg = [(i,) for i in range(nsamples)]
         with Pool(processes=64) as p:
             activations = p.starmap(self.generate,arg)
         activations = np.array(activations)
