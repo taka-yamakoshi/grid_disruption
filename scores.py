@@ -133,7 +133,7 @@ class GridScorer(object):
         cpol = np.interp(x=dbins,xp=dbins[~nan_loc],fp=cpol[~nan_loc])
         return cpol
 
-    def calc_score(self, x:np.ndarray):
+    def calc_score(self, x:np.ndarray, return_as_dict:bool=False):
         sac = self.calc_sac(x)
         crad, r0, r1, r2, message = self.calc_crad(sac)
         if message!='--':
@@ -147,8 +147,16 @@ class GridScorer(object):
             score_norm = np.sum(cpol**2) - (cpol.sum()**2)/len(cpol) # Calculate the denominator for the grid score
             score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol))/score_norm
             score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol))/score_norm
+
+            fpcpol = 2*(abs(ftcpol)**2)[:10]/len(cpol)/score_norm
             
-            return r0, r1, r2, message, max_freq, max_phase, score_60, score_90, crad, cpol, 2*(abs(ftcpol)**2)[:10]/len(cpol)/score_norm
+            if return_as_dict:
+                return {'r0':r0,'r1':r1,'r2':r2,'message':message,
+                        'max_freq':max_freq,'max_phase':max_phase,
+                        'score_60':score_60,'score_90':score_90,
+                        'crad':crad, 'cpol':cpol, 'fpcpol':fpcpol}
+            else:
+                return r0, r1, r2, message, max_freq, max_phase, score_60, score_90, crad, cpol, fpcpol
 
     def run(self, options:object, activations:np.ndarray, perturbation:Union[Tuple[float,float],None]=None):
         arg = [(act,) for act in activations]
@@ -179,7 +187,7 @@ class GridScorer(object):
     #    diff = np.all(diff_all>0,axis=-1)
     #    return diff
 
-    def calc_score_new(self, x:np.ndarray):
+    def calc_score_new(self, x:np.ndarray, return_as_dict:bool=False):
         assert x.shape[0] == x.shape[1]
         res = x.shape[0]
         w = res//20
@@ -213,4 +221,11 @@ class GridScorer(object):
         score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol))/score_norm
         score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol))/score_norm
 
-        return max_freq, max_phase, score_60, score_90, cpol, 2*(abs(ftcpol)**2)[:10]/len(cpol)/score_norm
+        fpcpol = 2*(abs(ftcpol)**2)[:10]/len(cpol)/score_norm
+
+        if return_as_dict:
+            return {'max_freq':max_freq,'max_phase':max_phase,
+                   'score_60':score_60,'score_90':score_90,
+                    'cpol':cpol, 'fpcpol':fpcpol}
+        else:
+            return max_freq, max_phase, score_60, score_90, cpol, fpcpol
