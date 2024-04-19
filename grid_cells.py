@@ -51,7 +51,8 @@ class GridCells(object):
         return intervals
     
     def generate(self, seed):
-        angle = np.random.rand(seed=seed)*360 # sample the rotation angle
+        rng = np.random.default_rng(seed)
+        angle = rng.uniform(0, 360) # sample the rotation angle
         mres = 2*self.res # increase resolution by 2
         mat = np.zeros((mres, mres))
         if self.symmetry == 2:
