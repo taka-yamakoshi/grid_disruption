@@ -185,12 +185,12 @@ class GridScorer(object):
         w = res//20
 
         fpx  = np.abs(np.fft.fftshift(np.fft.fft2(x)))**2
-        cx, cy =np.argwhere(fpx==fpx.max())[0]
+        cx, cy = np.argwhere(fpx==fpx.max())[0]
         fpx[cx,cy] = 0
         mat = fpx[cx-w:-cx+w+1,cy-w:-cy+w+1]
 
         xnew, ynew =  np.meshgrid(np.linspace(0,mat.shape[0]-1,2*res-1), np.linspace(0,mat.shape[1]-1,2*res-1))
-        interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat)
+        interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat.T)
         mat = interp((xnew,ynew))
 
         sigma = w//2
