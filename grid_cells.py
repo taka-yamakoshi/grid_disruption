@@ -36,10 +36,10 @@ class GridCells(object):
         self.shape = shape
     
     def __str__(self):
-        return f"{self.symmetry}grids_scale{self.scale}_size{self.size[0]}-{self.size[1]}_noise{self.noise[0]}-{self.noise[1]}_res{self.res}_{self.shape}"
+        return f"{self.symmetry}grids_scale{self.scale}_size{self.size[0]:.1f}-{self.size[1]:.1f}_noise{self.noise[0]:.1f}-{self.noise[1]:.1f}_res{self.res}_{self.shape}"
     
     def __repr__(self):
-        return f"{self.symmetry}grids_scale{self.scale}_size{self.size[0]}-{self.size[1]}_noise{self.noise[0]}-{self.noise[1]}_res{self.res}_{self.shape}"
+        return f"{self.symmetry}grids_scale{self.scale}_size{self.size[0]:.1f}-{self.size[1]:.1f}_noise{self.noise[0]:.1f}-{self.noise[1]:.1f}_res{self.res}_{self.shape}"
     
     def _get_intervals(self, res: int, scale:float, noise: float):
         start = np.random.rand()*scale
