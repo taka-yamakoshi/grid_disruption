@@ -137,7 +137,13 @@ class GridScorer(object):
         sac = self.calc_sac(x)
         crad, r0, r1, r2, message = self.calc_crad(sac)
         if message!='--':
-            return r0, r1, r2, message, 0, 0, 0, 0, crad, 0, 0
+            if return_as_dict:
+                return {'r0':r0,'r1':r1,'r2':r2,'message':message,
+                        'max_freq':0,'max_phase':0,
+                        'score_60':0,'score_90':0,
+                        'crad':crad, 'cpol':0, 'fpcpol':0}
+            else:
+                return r0, r1, r2, message, 0, 0, 0, 0, crad, 0, 0
         else:
             cpol = self.calc_cpol(sac,r1,r2)
             ftcpol = np.fft.fft(cpol)
