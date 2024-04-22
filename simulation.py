@@ -45,7 +45,7 @@ if __name__ == '__main__':
     # sweep over sizes
     print("Sweeping over sizes...")
     scale = 100
-    for symmetry in [4,6]:
+    for symmetry in [2,4,6]:
         for size in np.arange(20,52,2)[:2]:
             hsize, vsize = size, 20
             data.extend(evaluate(scorer, symmetry, scale, hsize, vsize, hnoise, vnoise))

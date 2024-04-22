@@ -143,7 +143,7 @@ class GridScorer(object):
                         'score_60':0,'score_90':0,
                         'crad':crad, 'cpol':0, 'fpcpol':0}
             else:
-                return r0, r1, r2, message, 0, 0, 0, 0, crad, 0, 0
+                return r0, r1, r2, message, 0, 0, 0, 0, crad, 0, np.zeros(10)
         else:
             cpol = self.calc_cpol(sac,r1,r2)
             ftcpol = np.fft.fft(cpol)
