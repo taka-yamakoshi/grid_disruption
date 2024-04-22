@@ -141,7 +141,7 @@ class GridScorer(object):
                 return {'r0':r0,'r1':r1,'r2':r2,'message':message,
                         'max_freq':0,'max_phase':0,
                         'score_60':0,'score_90':0,
-                        'crad':crad, 'cpol':0, 'fpcpol':0}
+                        'crad':crad, 'cpol':0, 'fpcpol':np.zeros(10)}
             else:
                 return r0, r1, r2, message, 0, 0, 0, 0, crad, 0, np.zeros(10)
         else:
