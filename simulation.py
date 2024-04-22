@@ -14,7 +14,7 @@ def evaluate(scorer:object, symmetry: int, scale:float, hsize: float, vsize:floa
     data = []
     for act in activations:
         old_scores = scorer.calc_score(act, return_as_dict=True)
-        new_scores = scorer.calc_score(act, return_as_dict=True)
+        new_scores = scorer.calc_score_new(act, return_as_dict=True)
         for freq in range(1,10):
             data.append([symmetry, scale, hsize, vsize, hnoise, vnoise, 'old', freq, old_scores['fpcpol'][freq]])
             data.append([symmetry, scale, hsize, vsize, hnoise, vnoise, 'new', freq, new_scores['fpcpol'][freq]])
