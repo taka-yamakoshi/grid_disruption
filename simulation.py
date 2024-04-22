@@ -56,7 +56,7 @@ if __name__ == '__main__':
     hsize, vsize = 20, 20
     for symmetry in [4,6]:
         for noise in np.arange(5,16):
-            vnoise = hnoise
+            hnoise, vnoise = noise, noise
             data.extend([['Exp4'] + line for line in evaluate(scorer, symmetry, scale, hsize, vsize, hnoise, vnoise)])
 
     df = pd.DataFrame(data, columns=head)
