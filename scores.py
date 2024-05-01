@@ -193,10 +193,11 @@ class GridScorer(object):
     #    diff = np.all(diff_all>0,axis=-1)
     #    return diff
 
-    def calc_score_new(self, x:np.ndarray, return_as_dict:bool=False):
+    def calc_score_new(self, x:np.ndarray, return_as_dict:bool=False, w:int=None):
         assert x.shape[0] == x.shape[1]
         res = x.shape[0]
-        w = res//20
+        if w is None:
+            w = res//20
 
         fpx  = np.abs(np.fft.fftshift(np.fft.fft2(x)))**2
         cx, cy = np.argwhere(fpx==fpx.max())[0]
@@ -205,10 +206,17 @@ class GridScorer(object):
 
         xnew, ynew =  np.meshgrid(np.linspace(0,mat.shape[0]-1,2*res-1), np.linspace(0,mat.shape[1]-1,2*res-1))
         interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat.T)
-        mat = interp((xnew,ynew))
+
+        try:
+            mat = interp((xnew,ynew))
+        except:
+            print("Out of bounds in interp function")
+            interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat.T, bounds_error=False)
+            mat = interp((xnew,ynew))
 
         sigma = w//2
         mat = scipy.ndimage.gaussian_filter(mat,sigma=sigma)
+        self.spectrum = mat
 
         #diff = self.get_diff(mat)
 
@@ -219,6 +227,7 @@ class GridScorer(object):
         #    intensity += np.sum(mat[peak[0]-2*sigma:peak[0]+2*sigma,peak[1]-2*sigma:peak[1]+2*sigma])
 
         cpol = self.calc_cpol(mat, 0, res*0.7)
+        cpol = scipy.ndimage.gaussian_filter(cpol,sigma=1)
         ftcpol = np.fft.fft(cpol)
         max_freq = np.argmax(abs(ftcpol)[1:36])+1 # Find frequency with maximum power
         max_phase = np.angle(ftcpol[max_freq],deg=True) # Find the corresponding phase
