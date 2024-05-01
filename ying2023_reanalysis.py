@@ -38,15 +38,17 @@ if __name__ == '__main__':
 
     for cond in ['wty','wta','j20y','j20a']:
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
-        for nid, dir_name in enumerate(dir_list[:100]):
+        for dir_name in dir_list:
             data = scipy.io.loadmat(dir_name)
             rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma)
 
             scorer = GridScorer(res)
             max_freq, max_phase, score_60, score_90, cpol, fpcpol = scorer.calc_score_new(rmap,w=w)
 
+            fname = dir_name.replace("../Code-for-Ying-et-al.-2023/extracted_all/","").replace(cond+"/","")
+            nid = fname.split("-")[0]
             for i in range(1,10):
-                csv_data.append([cond, nid, max_freq, max_phase, i, fpcpol[i]])
+                csv_data.append([cond, int(nid), max_freq, max_phase, i, fpcpol[i]])
 
             fig, axs = plt.subplots(1,5,figsize=(12,3.2),gridspec_kw=dict(wspace=0.15))
             ax = axs[0]
@@ -74,8 +76,6 @@ if __name__ == '__main__':
             ax.scatter(np.arange(10)[1:],fpcpol[1:])
             sns.despine(ax=ax)
             ax.set_xticks([])
-
-            fname = dir_name.replace("../Code-for-Ying-et-al.-2023/extracted_all/","").replace(cond+"/","")
 
             fig.savefig(f'images/ying2023_all/{cond}/{fname.replace(".mat",".png")}',bbox_inches = "tight")
 
