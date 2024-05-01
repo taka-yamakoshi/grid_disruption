@@ -40,7 +40,7 @@ if __name__ == '__main__':
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
         for nid, dir_name in enumerate(dir_list[:100]):
             data = scipy.io.loadmat(dir_name)
-            rmap, spike, total = calc_rate_map(data)
+            rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma)
 
             scorer = GridScorer(res)
             max_freq, max_phase, score_60, score_90, cpol, fpcpol = scorer.calc_score_new(rmap,w=w)
