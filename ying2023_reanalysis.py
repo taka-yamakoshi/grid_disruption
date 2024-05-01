@@ -34,7 +34,7 @@ if __name__ == '__main__':
     vmax = 10
 
     head = ['gtype','nid','max_freq','max_phase','freq','power']
-    data = []
+    csv_data = []
 
     for cond in ['wty','wta','j20y','j20a']:
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
@@ -46,7 +46,7 @@ if __name__ == '__main__':
             max_freq, max_phase, score_60, score_90, cpol, fpcpol = scorer.calc_score_new(rmap,w=w)
 
             for i in range(1,10):
-                data.append([cond, nid, max_freq, max_phase, i, fpcpol[i]])
+                csv_data.append([cond, nid, max_freq, max_phase, i, fpcpol[i]])
 
             fig, axs = plt.subplots(1,5,figsize=(12,3.2),gridspec_kw=dict(wspace=0.15))
             ax = axs[0]
@@ -83,5 +83,5 @@ if __name__ == '__main__':
             plt.close()
 
 
-    df = pd.DataFrame(data, columns=head)
+    df = pd.DataFrame(csv_data, columns=head)
     df.to_csv(f'data/ying2023_reanalysis_{res}_{sigma}_{w}.csv', index=False)
