@@ -11,8 +11,8 @@ def calc_rate_map(data: dict, res: int = 50, sigma: float = 5.0):
     x, y = data['x'][:,0], data['y'][:,0]
     spki = data['spki'][:,0] - 1 # convert to python indexing
 
-    xmin, xmax = min(x), max(x)
-    ymin, ymax = min(y), max(y)
+    xmin, xmax = np.nanmin(x), np.nanmax(x)
+    ymin, ymax = np.nanmin(y), np.nanmax(y)
     xbins = np.linspace(xmin,xmax,res+1)
     ybins = np.linspace(ymin,ymax,res+1)
     spkx, spky = x[spki], y[spki]

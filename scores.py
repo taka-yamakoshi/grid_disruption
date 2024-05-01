@@ -206,13 +206,7 @@ class GridScorer(object):
 
         xnew, ynew =  np.meshgrid(np.linspace(0,mat.shape[0]-1,2*res-1), np.linspace(0,mat.shape[1]-1,2*res-1))
         interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat.T)
-
-        try:
-            mat = interp((xnew,ynew))
-        except IndexError:
-            print("Out of bounds in interp function")
-            interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat.T, bounds_error=False)
-            mat = interp((xnew,ynew))
+        mat = interp((xnew,ynew))
 
         sigma = w//2
         mat = scipy.ndimage.gaussian_filter(mat,sigma=sigma)
