@@ -209,7 +209,7 @@ class GridScorer(object):
 
         try:
             mat = interp((xnew,ynew))
-        except:
+        except IndexError:
             print("Out of bounds in interp function")
             interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat.T, bounds_error=False)
             mat = interp((xnew,ynew))
