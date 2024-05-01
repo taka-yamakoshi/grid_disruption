@@ -75,7 +75,7 @@ if __name__ == '__main__':
             sns.despine(ax=ax)
             ax.set_xticks([])
 
-            fname = dir_name.replace("../Code-for-Ying-et-al.-2023/extracted/","").replace(cond+"/","")
+            fname = dir_name.replace("../Code-for-Ying-et-al.-2023/extracted_all/","").replace(cond+"/","")
 
             fig.savefig(f'images/ying2023_all/{cond}/{fname.replace(".mat",".png")}',bbox_inches = "tight")
 
