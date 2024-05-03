@@ -17,8 +17,6 @@ from multiprocessing import Pool
 class GridScorer(object):
     def __init__(self, res:int=50):
         self.res = res
-        self.disc = self._get_disc(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),res=2*res-1)
-        self.angl = self._get_angl(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),res=2*res-1)
 
     def _get_disc(self,
                   xlims:Tuple[float,float],
@@ -70,12 +68,13 @@ class GridScorer(object):
         assert len(sac.shape)==2 and sac.shape[0]==sac.shape[1]
         assert (sac.shape[0]+1)%2==0
         res = (sac.shape[0]+1)//2
+        disc = self._get_disc(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),res=2*res-1)
 
         rbins, step = np.linspace(0,res*0.9*(199/200),200,retstep=True)
         crad = np.zeros(rbins.shape)
         nan_loc = []
         for i, r in enumerate(rbins):
-            mask = (self.disc>=r)&(self.disc<r+step)
+            mask = (disc>=r)&(disc<r+step)
             if mask.sum()==0:
                 crad[i] = np.nan
                 nan_loc.append(True)
@@ -118,11 +117,16 @@ class GridScorer(object):
 
     def calc_cpol(self, sac:np.ndarray, r1:float, r2:float):
 
+        assert len(sac.shape)==2 and sac.shape[0]==sac.shape[1]
+        res = (sac.shape[0]+1)//2
+        disc = self._get_disc(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),res=2*res-1)
+        angl = self._get_angl(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),res=2*res-1)
+
         dbins, step = np.linspace(-180,177,120,retstep=True)
         cpol = np.zeros(dbins.shape)
         nan_loc = []
         for i, d in enumerate(dbins):
-            mask = (self.disc>=r1)&(self.disc<r2)&(self.angl>=d)&(self.angl<d+step)
+            mask = (disc>=r1)&(disc<r2)&(angl>=d)&(angl<d+step)
             if mask.sum()==0:
                 cpol[i] = np.nan
                 nan_loc.append(True)
@@ -179,51 +183,31 @@ class GridScorer(object):
             for nid, line in enumerate(results):
                 writer.writerow([str(nid)] + [str(item) for item in line])
 
-    #def get_diff(self, mat:np.ndarray):
-    #    diff_all = np.zeros((mat.shape[0]-2,mat.shape[1]-2,4))
-    #    diff_d = mat[:-1,:] - mat[1:,:]
-    #    diff_u = mat[1:,:] - mat[:-1,:]
-    #    diff_r = mat[:,:-1] - mat[:,1:]
-    #    diff_l = mat[:,1:] - mat[:,:-1]
-
-    #    diff_all[:,:,0] = diff_d[1:,1:-1]
-    #    diff_all[:,:,1] = diff_u[:-1,1:-1]
-    #    diff_all[:,:,2] = diff_r[1:-1,1:]
-    #    diff_all[:,:,3] = diff_l[1:-1,:-1]
-    #    diff = np.all(diff_all>0,axis=-1)
-    #    return diff
-
-    def calc_score_new(self, x:np.ndarray, return_as_dict:bool=False, w:int=None):
+    def calc_score_new(self, x:np.ndarray, return_as_dict:bool=False, new_res:int=255):
         assert x.shape[0] == x.shape[1]
         res = x.shape[0]
-        if w is None:
-            w = res//20
+
+        # Pad the ratemap to increase the resolution of the Fourier spectrogram.
+        assert (new_res - res) % 2 == 0, "Unable to pad to this new_res"
+        npad = (new_res - res) // 2
+        x = np.pad(x, ((npad,npad),(npad,npad)))
 
         fpx  = np.abs(np.fft.fftshift(np.fft.fft2(x)))**2
+
+        # Mask the center peak with a flipped Gaussian
+        xcoord,ycoord = np.meshgrid(np.arange(fpx.shape[0]), np.arange(fpx.shape[1]))
         cx, cy = np.argwhere(fpx==fpx.max())[0]
-        fpx[cx,cy] = 0
-        mat = fpx[cx-w:-cx+w+1,cy-w:-cy+w+1]
+        gfilter = 1- np.exp(-((xcoord-cx)**2 + (ycoord-cy)**2)/2)
+        mat = fpx*(gfilter==1)
 
-        xnew, ynew =  np.meshgrid(np.linspace(0,mat.shape[0]-1,2*res-1), np.linspace(0,mat.shape[1]-1,2*res-1))
-        interp = scipy.interpolate.RegularGridInterpolator((np.arange(mat.shape[0]),np.arange(mat.shape[1])), mat.T)
-        mat = interp((xnew,ynew))
+        # Normalize and remove noise
+        mat = mat / np.nanmax(mat)
+        mat[mat < 0.25] = 0
 
-        sigma = w//2
-        mat = scipy.ndimage.gaussian_filter(mat,sigma=sigma)
-        self.spectrum = mat
-
-        #diff = self.get_diff(mat)
-
-        #peak_vals = mat[1:-1,1:-1][diff]
-        #peak_locs = np.argwhere(diff)[peak_vals > np.max(mat)*0.9]
-        #intensity = 0
-        #for peak in peak_locs:
-        #    intensity += np.sum(mat[peak[0]-2*sigma:peak[0]+2*sigma,peak[1]-2*sigma:peak[1]+2*sigma])
-
-        cpol = self.calc_cpol(mat, 0, res*0.7)
-        cpol = scipy.ndimage.gaussian_filter(cpol,sigma=1)
+        cpol = self.calc_cpol(mat, 0, (mat.shape[0]/2)*0.7)
+        cpol = scipy.ndimage.gaussian_filter(cpol,sigma=3,mode='wrap')
         ftcpol = np.fft.fft(cpol)
-        max_freq = np.argmax(abs(ftcpol)[1:36])+1 # Find frequency with maximum power
+        max_freq = np.argmax(abs(ftcpol)[1:len(ftcpol)//2])+1 # Find frequency with maximum power
         max_phase = np.angle(ftcpol[max_freq],deg=True) # Find the corresponding phase
 
         score_norm = np.sum(cpol**2) - (cpol.sum()**2)/len(cpol) # Calculate the denominator for the grid score
