@@ -27,11 +27,11 @@ def calc_rate_map(data: dict, res: int = 50, sigma: float = 5.0):
     return rmap, spike, total
 
 if __name__ == '__main__':
-    res = 200
-    sigma = 20
-    w = 10
+    res = 50
+    sigma = 5
+    w = 5
 
-    vmax = 10
+    vmax = 100
 
     head = ['gtype','nid','max_freq','max_phase','freq','power']
     csv_data = []
@@ -77,7 +77,7 @@ if __name__ == '__main__':
             sns.despine(ax=ax)
             ax.set_xticks([])
 
-            fig.savefig(f'images/ying2023_all/{cond}/{fname.replace(".mat",".png")}',bbox_inches = "tight")
+            fig.savefig(f'images/ying2023_all/{res}-{sigma}-{w}/{cond}/{fname.replace(".mat",".png")}',bbox_inches = "tight")
 
             plt.clf()
             plt.close()
