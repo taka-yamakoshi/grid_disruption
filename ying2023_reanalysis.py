@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import glob
+import os
 
 from scores import GridScorer
 
-def calc_rate_map(data: dict, res: int = 50, sigma: float = 5.0):
+def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0):
     x, y = data['x'][:,0], data['y'][:,0]
     spki = data['spki'][:,0] - 1 # convert to python indexing
 
@@ -27,9 +28,9 @@ def calc_rate_map(data: dict, res: int = 50, sigma: float = 5.0):
     return rmap, spike, total
 
 if __name__ == '__main__':
-    res = 50
+    res = 35
     sigma = 5
-    w = 5
+    new_res = 255
 
     vmax = 100
 
@@ -38,12 +39,13 @@ if __name__ == '__main__':
 
     for cond in ['wty','wta','j20y','j20a']:
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
+        os.makedirs(f'images/ying2023_all/{res}-{sigma}-{new_res}/{cond}',exist_ok=True)
         for dir_name in dir_list:
             data = scipy.io.loadmat(dir_name)
             rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma)
 
             scorer = GridScorer(res)
-            max_freq, max_phase, score_60, score_90, cpol, fpcpol = scorer.calc_score_new(rmap,w=w)
+            max_freq, max_phase, score_60, score_90, cpol, fpcpol = scorer.calc_score_new(rmap,new_res=new_res)
 
             fname = dir_name.replace("../Code-for-Ying-et-al.-2023/extracted_all/","").replace(cond+"/","")
             nid = fname.split("-")[0]
@@ -77,11 +79,11 @@ if __name__ == '__main__':
             sns.despine(ax=ax)
             ax.set_xticks([])
 
-            fig.savefig(f'images/ying2023_all/{res}-{sigma}-{w}/{cond}/{fname.replace(".mat",".png")}',bbox_inches = "tight")
+            fig.savefig(f'images/ying2023_all/{res}-{sigma}-{new_res}/{cond}/{fname.replace(".mat",".png")}',bbox_inches = "tight")
 
             plt.clf()
             plt.close()
 
 
     df = pd.DataFrame(csv_data, columns=head)
-    df.to_csv(f'data/ying2023_reanalysis_{res}_{sigma}_{w}.csv', index=False)
+    df.to_csv(f'data/ying2023_reanalysis_{res}_{sigma}_{new_res}.csv', index=False)
