@@ -30,7 +30,7 @@ def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0):
 
 if __name__ == '__main__':
     res = 35
-    sigma = 2
+    sigma = 0
     new_res = 255
 
     vmax = 100
