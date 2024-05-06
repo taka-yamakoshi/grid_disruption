@@ -203,6 +203,7 @@ class GridScorer(object):
         # Normalize and remove noise
         mat = mat / np.nanmax(mat)
         mat[mat < 0.25] = 0
+        self.spectrum = mat
 
         cpol = self.calc_cpol(mat, 0, (mat.shape[0]/2)*0.7)
         cpol = scipy.ndimage.gaussian_filter(cpol,sigma=3,mode='wrap')

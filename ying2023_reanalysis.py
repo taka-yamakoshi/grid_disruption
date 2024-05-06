@@ -21,15 +21,16 @@ def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0):
     spike, _, _ = np.histogram2d(spkx,spky,[xbins,ybins])
     total, _, _ = np.histogram2d(x,y,[xbins,ybins])
 
-    spike = scipy.ndimage.gaussian_filter(spike,sigma=sigma)
-    total = scipy.ndimage.gaussian_filter(total,sigma=sigma)
+    if sigma > 0:
+        spike = scipy.ndimage.gaussian_filter(spike,sigma=sigma)
+        total = scipy.ndimage.gaussian_filter(total,sigma=sigma)
 
     rmap = np.divide(spike,total+1e-10)
     return rmap, spike, total
 
 if __name__ == '__main__':
     res = 35
-    sigma = 5
+    sigma = 2
     new_res = 255
 
     vmax = 100
