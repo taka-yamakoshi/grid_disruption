@@ -168,20 +168,23 @@ class GridScorer(object):
             else:
                 return r0, r1, r2, message, max_freq, max_phase, score_60, score_90, crad, cpol, fpcpol
 
-    def run(self, options:object, activations:np.ndarray, perturbation:Union[Tuple[float,float],None]=None):
+    def run(self, options:object, activations:np.ndarray, perturbation:Union[Tuple[float,float,float,float],None]=None):
         arg = [(act,) for act in activations]
         with Pool(processes=64) as p:
-            results = p.starmap(self.calc_score,arg)
-
-        r0, r1, r2, message, max_freq, max_phase, score_60, score_90 = zip(*results)
+            results = p.starmap(self.calc_score_new,arg)
+    
+        max_freq, max_phase, score_60, score_90, cpol, fpcpol = zip(*results)
         np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid60.npy',score_60)
         np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid90.npy',score_90)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/cpol.npy',cpol)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/fpcpol.npy',fpcpol)
 
         with open(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid_stats.csv', 'w') as f:
             writer = csv.writer(f)
-            writer.writerow(['neuron_id','r0','r1','r2','message','max_freq','max_phase','score_60','score_90'])
+            writer.writerow(['neuron_id','max_freq','max_phase','freq','power'])
             for nid, line in enumerate(results):
-                writer.writerow([str(nid)] + [str(item) for item in line])
+                for freq, power in zip(np.arange(10)[1:],line[-1][1:]):
+                    writer.writerow([str(nid)] + [str(line[0]), str(line[1])] + [str(freq), str(power)])
 
     def calc_score_new(self, x:np.ndarray, return_as_dict:bool=False, new_res:int=255):
         assert x.shape[0] == x.shape[1]

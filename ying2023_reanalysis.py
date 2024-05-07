@@ -30,8 +30,11 @@ def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0):
 
 if __name__ == '__main__':
     res = 35
-    sigma = 0
+    sigma = 2
     new_res = 255
+    shuffle = True
+
+    run_ID = f'{res}-{sigma}-{new_res}-shuffled' if shuffle else f'{res}-{sigma}-{new_res}'
 
     vmax = 100
 
@@ -40,10 +43,15 @@ if __name__ == '__main__':
 
     for cond in ['wty','wta','j20y','j20a']:
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
-        os.makedirs(f'images/ying2023_all/{res}-{sigma}-{new_res}/{cond}',exist_ok=True)
+        os.makedirs(f'images/ying2023_all/{run_ID}/{cond}',exist_ok=True)
         for dir_name in dir_list:
             data = scipy.io.loadmat(dir_name)
             rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma)
+
+            if shuffle:
+                rng = np.random.default_rng()
+                rng.shuffle(rmap,axis=0)
+                rng.shuffle(rmap,axis=1)
 
             scorer = GridScorer(res)
             max_freq, max_phase, score_60, score_90, cpol, fpcpol = scorer.calc_score_new(rmap,new_res=new_res)
@@ -85,11 +93,11 @@ if __name__ == '__main__':
             sns.despine(ax=ax)
             ax.set_xticks([])
 
-            fig.savefig(f'images/ying2023_all/{res}-{sigma}-{new_res}/{cond}/{fname.replace(".mat",".png")}',bbox_inches = "tight")
+            fig.savefig(f'images/ying2023_all/{run_ID}/{cond}/{fname.replace(".mat",".png")}',bbox_inches = "tight")
 
             plt.clf()
             plt.close()
 
 
     df = pd.DataFrame(csv_data, columns=head)
-    df.to_csv(f'data/ying2023_reanalysis_{res}_{sigma}_{new_res}.csv', index=False)
+    df.to_csv(f'data/ying2023_reanalysis_{run_ID}.csv', index=False)
