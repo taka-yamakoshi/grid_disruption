@@ -16,7 +16,7 @@ if __name__ == '__main__':
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
         for dir_name in tqdm(dir_list):
             data = scipy.io.loadmat(dir_name)
-            rmap, spike, total = calc_rate_map(data, res=36, sigma=2)
+            rmap, spike, total = calc_rate_map(data, res=36, sigma=0)
 
             scorer = GridScorer(0) # get the scorer just to calculate sac
             sac = scorer.calc_sac(rmap)

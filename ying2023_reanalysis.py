@@ -53,29 +53,34 @@ if __name__ == '__main__':
             for i in range(1,10):
                 csv_data.append([cond, int(nid), max_freq, max_phase, i, fpcpol[i]])
 
-            fig, axs = plt.subplots(1,5,figsize=(12,3.2),gridspec_kw=dict(wspace=0.15))
+            fig, axs = plt.subplots(1,6,figsize=(15,3.2),gridspec_kw=dict(wspace=0.15))
             ax = axs[0]
             ax.imshow(total,vmin=0,vmax=vmax)
             ax.axis('off')
             ax.set_title('Occupancy')
 
             ax = axs[1]
+            ax.imshow(spike,vmin=0,vmax=vmax/10)
+            ax.axis('off')
+            ax.set_title('Spike')
+
+            ax = axs[2]
             ax.imshow(rmap)
             ax.axis('off')
             ax.set_title('Ratemap')
 
-            ax = axs[2]
+            ax = axs[3]
             ax.imshow(scorer.spectrum)
             ax.axis('off')
             ax.set_title('Spectrum')
 
-            ax = axs[3]
+            ax = axs[4]
             ax.plot(cpol)
             ax.set_yticks([])
             ax.set_xticks([])
             sns.despine(ax=ax)
 
-            ax = axs[4]
+            ax = axs[5]
             ax.scatter(np.arange(10)[1:],fpcpol[1:])
             sns.despine(ax=ax)
             ax.set_xticks([])
