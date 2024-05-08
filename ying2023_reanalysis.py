@@ -13,7 +13,7 @@ def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0, shuffle: bool =
     spki = data['spki'][:,0] - 1 # convert to python indexing
     if shuffle:
         rng = np.random.default_rng()
-        spki = rng.permutation(spki)
+        spki = rng.permutation(len(x))[:len(spki)]
 
     xmin, xmax = np.nanmin(x), np.nanmax(x)
     ymin, ymax = np.nanmin(y), np.nanmax(y)
