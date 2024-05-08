@@ -8,9 +8,12 @@ import os
 
 from scores import GridScorer
 
-def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0):
+def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0, shuffle: bool = False):
     x, y = data['x'][:,0], data['y'][:,0]
     spki = data['spki'][:,0] - 1 # convert to python indexing
+    if shuffle:
+        rng = np.random.default_rng()
+        spki = rng.permutation(spki)
 
     xmin, xmax = np.nanmin(x), np.nanmax(x)
     ymin, ymax = np.nanmin(y), np.nanmax(y)
@@ -46,12 +49,7 @@ if __name__ == '__main__':
         os.makedirs(f'images/ying2023_all/{run_ID}/{cond}',exist_ok=True)
         for dir_name in dir_list:
             data = scipy.io.loadmat(dir_name)
-            rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma)
-
-            if shuffle:
-                rng = np.random.default_rng()
-                rng.shuffle(rmap,axis=0)
-                rng.shuffle(rmap,axis=1)
+            rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma, shuffle=shuffle)
 
             scorer = GridScorer(res)
             max_freq, max_phase, score_60, score_90, cpol, fpcpol = scorer.calc_score_new(rmap,new_res=new_res)

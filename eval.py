@@ -280,6 +280,12 @@ if __name__=='__main__':
 
         start = time.time()
 
+        if prtrb is not None:
+            options.vel_sigma = prtrb[0]
+            options.vel_scale = prtrb[1]
+            options.hid_sigma = prtrb[2]
+            options.hid_scale = prtrb[3]
+
         plot_trajectory(place_cells,options,model,trajectory_generator,prtrb)
 
         plot_place_cells(place_cells,options,model,trajectory_generator,prtrb)
