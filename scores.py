@@ -215,10 +215,10 @@ class GridScorer(object):
         max_phase = np.angle(ftcpol[max_freq],deg=True) # Find the corresponding phase
 
         score_norm = np.sum(cpol**2) - (cpol.sum()**2)/len(cpol) # Calculate the denominator for the grid score
-        score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol))/score_norm
-        score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol))/score_norm
+        score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol)) / (score_norm + 1e-10)
+        score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol)) / (score_norm + 1e-10)
 
-        fpcpol = 2*(abs(ftcpol)**2)[:10]/len(cpol)/score_norm
+        fpcpol = 2*(abs(ftcpol)**2)[:10]/len(cpol) / (score_norm + 1e-10)
 
         if return_as_dict:
             return {'max_freq':max_freq,'max_phase':max_phase,

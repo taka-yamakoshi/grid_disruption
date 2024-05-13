@@ -270,7 +270,7 @@ if __name__=='__main__':
 
     trajectory_generator = TrajectoryGenerator(options, place_cells)
 
-    prtrb_list = [None]
+    prtrb_list = [(0.0, 1.0, 0.0, 1.0)]
     prtrb_list += [(vel_sigma, 1.0, 0.0, 1.0) for vel_sigma in np.linspace(0.05,0.1,6)]
     prtrb_list += [(0.0, 1.0, hid_sigma, 1.0) for hid_sigma in np.linspace(0.05,0.1,6)]
 
