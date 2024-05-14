@@ -233,7 +233,7 @@ class GridScorer(object):
 
         dx, dy = (sac.shape[0]-1)//2, (sac.shape[1]-1)//2
         disc = self._get_disc(xlims=[-dx,dx],ylims=[-dy,dy],res=sac.shape[0])
-        mask = disc<min(dx,dy)
+        mask = disc<min(dx,dy)*0.9
         mask[dx,dy] = False
         self.mask = mask
 
