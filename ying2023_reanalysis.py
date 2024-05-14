@@ -7,29 +7,7 @@ import glob
 import os
 
 from scores import GridScorer
-
-def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0, shuffle: bool = False):
-    x, y = data['x'][:,0], data['y'][:,0]
-    spki = data['spki'][:,0] - 1 # convert to python indexing
-    if shuffle:
-        rng = np.random.default_rng()
-        spki = rng.permutation(len(x))[:len(spki)]
-
-    xmin, xmax = np.nanmin(x), np.nanmax(x)
-    ymin, ymax = np.nanmin(y), np.nanmax(y)
-    xbins = np.linspace(xmin,xmax,res+1)
-    ybins = np.linspace(ymin,ymax,res+1)
-    spkx, spky = x[spki], y[spki]
-
-    spike, _, _ = np.histogram2d(spkx,spky,[xbins,ybins])
-    total, _, _ = np.histogram2d(x,y,[xbins,ybins])
-
-    if sigma > 0:
-        spike = scipy.ndimage.gaussian_filter(spike,sigma=sigma)
-        total = scipy.ndimage.gaussian_filter(total,sigma=sigma)
-
-    rmap = np.divide(spike,total+1e-10)
-    return rmap, spike, total
+from ying2023_ratemap import calc_rate_map
 
 if __name__ == '__main__':
     res = 35

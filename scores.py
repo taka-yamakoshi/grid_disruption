@@ -61,7 +61,7 @@ class GridScorer(object):
         #sac = scipy.signal.correlate(x,x)
         norm = (x**2).sum()/np.ones_like(x).sum()
         sac_norm = self._get_sac_norm(2*res-1,2*res-1) * norm
-        sac = np.divide(sac,sac_norm)
+        sac = np.divide(sac,sac_norm+1e-10)
         return sac
     
     def calc_crad(self, sac:np.ndarray):
@@ -137,7 +137,7 @@ class GridScorer(object):
         cpol = np.interp(x=dbins,xp=dbins[~nan_loc],fp=cpol[~nan_loc])
         return cpol
 
-    def calc_score(self, x:np.ndarray, return_as_dict:bool=False):
+    def calc_score_ring(self, x:np.ndarray, return_as_dict:bool=False):
         sac = self.calc_sac(x)
         crad, r0, r1, r2, message = self.calc_crad(sac)
         if message!='--':
@@ -186,7 +186,7 @@ class GridScorer(object):
                 for freq, power in zip(np.arange(10)[1:],line[-1][1:]):
                     writer.writerow([str(nid)] + [str(line[0]), str(line[1])] + [str(freq), str(power)])
 
-    def calc_score_new(self, x:np.ndarray, return_as_dict:bool=False, new_res:int=255):
+    def calc_score_fourier(self, x:np.ndarray, return_as_dict:bool=False, new_res:int=255):
         assert x.shape[0] == x.shape[1]
         res = x.shape[0]
 
@@ -226,3 +226,28 @@ class GridScorer(object):
                     'cpol':cpol, 'fpcpol':fpcpol}
         else:
             return max_freq, max_phase, score_60, score_90, cpol, fpcpol
+
+    def calc_score_rot(self, x:np.ndarray, return_as_dict:bool=False):
+        sac = self.calc_sac(x)
+        self.sac = sac
+
+        dx, dy = (sac.shape[0]-1)//2, (sac.shape[1]-1)//2
+        disc = self._get_disc(xlims=[-dx,dx],ylims=[-dy,dy],res=sac.shape[0])
+        mask = disc<min(dx,dy)
+        mask[dx,dy] = False
+        self.mask = mask
+
+        corr = []
+        for angle in range(360):
+            rot_sac = scipy.ndimage.rotate(sac, angle, reshape=False)
+            corr.append(scipy.stats.pearsonr(sac[mask], rot_sac[mask]).statistic)
+
+        corr = np.array(corr)
+        ftcorr = np.fft.fft(corr)
+        score_norm = np.sum(corr**2) # Calculate the denominator for the grid score; note that the zeroth component is included in the denominator
+        fpcorr = 2*(abs(ftcorr)**2)/len(ftcorr)/score_norm
+
+        if return_as_dict:
+            return {'corr':corr, 'fpcorr':fpcorr[:10]}
+        else:
+            return corr, fpcorr[:10]

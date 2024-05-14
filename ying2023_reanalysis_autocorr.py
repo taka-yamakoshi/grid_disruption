@@ -8,36 +8,15 @@ import argparse
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from ying2023_reanalysis import calc_rate_map
+from ying2023_ratemap import calc_rate_map
 
-def calc_autocorr(run_ID, cond, dir_name, res, sigma, shuffle, vmax):
+def calc_autocorr(run_ID, cond, dir_name, res, sigma, shuffle, edge, vmax):
     data = scipy.io.loadmat(dir_name)
-    rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma, shuffle=shuffle)
+    rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma, shuffle=shuffle, edge=edge)
 
     from scores import GridScorer
-    scorer = GridScorer(0) # get the scorer just to calculate sac
-
-    dx, dy = (rmap.shape[0]-1)//2, (rmap.shape[1]-1)//2
-    disc = scorer._get_disc(xlims=[-dx,dx],ylims=[-dy,dy],res=rmap.shape[0])
-    mask = disc>min(dx,dy)*0.9
-    rmap[mask] = 0.0
-
-    sac = scorer.calc_sac(rmap)
-
-    dx, dy = (sac.shape[0]-1)//2, (sac.shape[1]-1)//2
-    disc = scorer._get_disc(xlims=[-dx,dx],ylims=[-dy,dy],res=sac.shape[0])
-    mask = disc<min(dx,dy)*0.9
-
-    corr = []
-    angles = np.linspace(0,360,361)
-    for angle in angles:
-        rot_sac = scipy.ndimage.rotate(sac, angle, reshape=False)
-        corr.append(scipy.stats.pearsonr(sac[mask], rot_sac[mask]).statistic)
-
-    corr = np.array(corr)
-    ftcorr = np.fft.fft(corr)
-    score_norm = np.sum(corr**2) - (corr.sum()**2)/len(corr) # Calculate the denominator for the grid score
-    fpcorr = 2*(abs(ftcorr)**2)[:10]/len(ftcorr) / (score_norm + 1e-10)
+    scorer = GridScorer(0)
+    corr, fpcorr = scorer.calc_score_rot(rmap)
 
     fname = dir_name.replace("../Code-for-Ying-et-al.-2023/extracted_all/","").replace(cond+"/","")
     nid = fname.split("-")[0]
@@ -60,7 +39,7 @@ def calc_autocorr(run_ID, cond, dir_name, res, sigma, shuffle, vmax):
     ax.set_title('Ratemap')
 
     ax = axs[3]
-    ax.imshow(sac, alpha=mask.astype(float)/2+1/2)
+    ax.imshow(scorer.sac, alpha=scorer.mask.astype(float)/2+1/2)
     ax.axis('off')
     ax.set_title('SAC')
 
@@ -89,13 +68,14 @@ if __name__ == '__main__':
     parser.add_argument('--res', type=int, default=35)
     parser.add_argument('--sigma', type=int, default=2)
     parser.add_argument('--shuffle', action='store_true')
+    parser.add_argument('--edge', type=float, default=0.0)
     args = parser.parse_args()
 
     vmax = 100 if args.res < 50 else 10
 
     out_dict = {}
 
-    run_ID = f'{args.res}-{args.sigma}-shuffled' if args.shuffle else f'{args.res}-{args.sigma}'
+    run_ID = f'{args.res}-{args.sigma}-{args.edge}-shuffled' if args.shuffle else f'{args.res}-{args.sigma}-{args.edge}'
     print(f'Running {run_ID}')
 
     csv_data = []
@@ -106,8 +86,8 @@ if __name__ == '__main__':
         out_dict[cond] = []
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
         os.makedirs(f'images/ying2023_autocorr/{run_ID}/{cond}',exist_ok=True)
-        pool_args = [(run_ID, cond, dir_name, args.res, args.sigma, args.shuffle, vmax) for dir_name in dir_list]
-        with mp.Pool(processes=64) as p:
+        pool_args = [(run_ID, cond, dir_name, args.res, args.sigma, args.shuffle, args.edge, vmax) for dir_name in dir_list]
+        with mp.Pool(processes=32) as p:
             results = p.starmap(calc_autocorr, pool_args)
         out_dict[cond], csv_data_cond = zip(*results)
         csv_data.extend([subline for line in csv_data_cond for subline in line])
