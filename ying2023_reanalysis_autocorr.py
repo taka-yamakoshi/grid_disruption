@@ -34,7 +34,7 @@ def calc_autocorr(run_ID, cond, dir_name, res, sigma, shuffle, edge, vmax):
     ax.set_title('Spike')
 
     ax = axs[2]
-    ax.imshow(rmap)
+    ax.imshow(rmap,vmin=0)
     ax.axis('off')
     ax.set_title('Ratemap')
 

@@ -21,10 +21,10 @@ class GridScorer(object):
     def _get_disc(self,
                   xlims:Tuple[float,float],
                   ylims:Tuple[float,float],
-                  res:int,
+                  size:Tuple[int,int],
                   center:Tuple[float,float]=[0.0,0.0]):
         """Calculates the distance from the center"""
-        X, Y = np.meshgrid(np.linspace(xlims[0],xlims[1],res), np.linspace(ylims[0],ylims[1],res))
+        X, Y = np.meshgrid(np.linspace(xlims[0],xlims[1],size[0]), np.linspace(ylims[0],ylims[1],size[1]))
         X = X - center[0]
         Y = Y - center[1]
         return np.sqrt(X**2 + Y**2)
@@ -32,14 +32,26 @@ class GridScorer(object):
     def _get_angl(self,
                   xlims:Tuple[float,float],
                   ylims:Tuple[float,float],
-                  res:int,
+                  size:Tuple[int,int],
                   center:Tuple[float,float]=[0.0,0.0]):
         """Calculates the angle in degrees"""
-        X, Y = np.meshgrid(np.linspace(xlims[0],xlims[1],res), np.linspace(ylims[0],ylims[1],res))
+        X, Y = np.meshgrid(np.linspace(xlims[0],xlims[1],size[0]), np.linspace(ylims[0],ylims[1],size[1]))
         X = X - center[0]
         Y = Y - center[1]
         return np.angle(X + Y * 1j, deg=True)
     
+    def _get_mask(self,
+                  size: Tuple[int,int],
+                  ratio: float,
+                  remove_center:bool=False):
+        """Calculates the mask"""
+        dx, dy = (size[0]-1)//2, (size[1]-1)//2
+        disc = self._get_disc(xlims=[-dx,dx],ylims=[-dy,dy],size=size)
+        mask = disc<min(dx,dy)*ratio
+        if remove_center:
+            mask[dx,dy] = False
+        return mask
+
     def _get_sac_norm(self,
                       width:int,
                       height:int):
@@ -68,7 +80,7 @@ class GridScorer(object):
         assert len(sac.shape)==2 and sac.shape[0]==sac.shape[1]
         assert (sac.shape[0]+1)%2==0
         res = (sac.shape[0]+1)//2
-        disc = self._get_disc(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),res=2*res-1)
+        disc = self._get_disc(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),size=(2*res-1,2*res-1))
 
         rbins, step = np.linspace(0,res*0.9*(199/200),200,retstep=True)
         crad = np.zeros(rbins.shape)
@@ -119,8 +131,8 @@ class GridScorer(object):
 
         assert len(sac.shape)==2 and sac.shape[0]==sac.shape[1]
         res = (sac.shape[0]+1)//2
-        disc = self._get_disc(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),res=2*res-1)
-        angl = self._get_angl(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),res=2*res-1)
+        disc = self._get_disc(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),size=(2*res-1,2*res-1))
+        angl = self._get_angl(xlims=(-(res-1),res-1),ylims=(-(res-1),res-1),size=(2*res-1,2*res-1))
 
         dbins, step = np.linspace(-180,177,120,retstep=True)
         cpol = np.zeros(dbins.shape)
@@ -208,6 +220,14 @@ class GridScorer(object):
         mat[mat < 0.25] = 0
         self.spectrum = mat
 
+        mask = self._get_mask(mat.shape,ratio=0.9,remove_center=True)
+        assert mat.shape == mask.shape
+        corr = []
+        for angle in range(360):
+            rot_mat = scipy.ndimage.rotate(mat, angle, reshape=False)
+            corr.append(np.corrcoef(mat[mask], rot_mat[mask])[0,1])
+        corr = np.array(corr)
+
         cpol = self.calc_cpol(mat, 0, (mat.shape[0]/2)*0.7)
         cpol = scipy.ndimage.gaussian_filter(cpol,sigma=3,mode='wrap')
         ftcpol = np.fft.fft(cpol)
@@ -225,27 +245,25 @@ class GridScorer(object):
                    'score_60':score_60,'score_90':score_90,
                     'cpol':cpol, 'fpcpol':fpcpol}
         else:
-            return max_freq, max_phase, score_60, score_90, cpol, fpcpol
+            return max_freq, max_phase, score_60, score_90, cpol, fpcpol, corr
 
     def calc_score_rot(self, x:np.ndarray, return_as_dict:bool=False):
         sac = self.calc_sac(x)
         self.sac = sac
 
-        dx, dy = (sac.shape[0]-1)//2, (sac.shape[1]-1)//2
-        disc = self._get_disc(xlims=[-dx,dx],ylims=[-dy,dy],res=sac.shape[0])
-        mask = disc<min(dx,dy)*0.9
-        mask[dx,dy] = False
+        mask = self._get_mask(sac.shape, ratio=0.9, remove_center=True)
         self.mask = mask
-
+        assert sac.shape == mask.shape
         corr = []
         for angle in range(360):
             rot_sac = scipy.ndimage.rotate(sac, angle, reshape=False)
-            corr.append(scipy.stats.pearsonr(sac[mask], rot_sac[mask]).statistic)
+            corr.append(np.corrcoef(sac[mask], rot_sac[mask])[0,1])
+            #corr.append((sac[mask]*rot_sac[mask]).mean())
 
         corr = np.array(corr)
         ftcorr = np.fft.fft(corr)
-        score_norm = np.sum(corr**2) # Calculate the denominator for the grid score; note that the zeroth component is included in the denominator
-        fpcorr = 2*(abs(ftcorr)**2)/len(ftcorr)/score_norm
+        #score_norm = np.sum(corr**2) # Calculate the denominator for the grid score; note that the zeroth component is included in the denominator
+        fpcorr = 2*(abs(ftcorr)**2)/len(ftcorr) #/score_norm
 
         if return_as_dict:
             return {'corr':corr, 'fpcorr':fpcorr[:10]}

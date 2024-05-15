@@ -3,6 +3,7 @@ import scipy
 import argparse
 import glob
 import os
+import time
 
 def calc_rate_map(data: dict, res: int = 35, sigma: float = 5.0, shuffle: bool = False, edge: float = 0.0):
     x, y = data['x'][:,0], data['y'][:,0]
@@ -37,8 +38,9 @@ def worker(dir_name, res, sigma, shuffle, edge):
     rmap, spike, total = calc_rate_map(data, res=res, sigma=sigma, shuffle=shuffle, edge=edge)
     from scores import GridScorer
     scorer = GridScorer(0) # get the scorer just to calculate sac
-    corr, fpcorr = scorer.calc_score_rot(rmap)
-    return rmap, spike, total, fpcorr
+    autocorr, fpautocorr = scorer.calc_score_rot(rmap)
+    _, _, _, _, cpol, fpcpol, speccorr = scorer.calc_score_fourier(rmap, new_res=255)
+    return rmap, spike, total, autocorr, fpautocorr, cpol, fpcpol, speccorr
 
 if __name__ == '__main__':
     import multiprocessing as mp
@@ -54,23 +56,21 @@ if __name__ == '__main__':
     run_ID = f'{args.res}-{args.sigma}-{args.edge}-shuffled' if args.shuffle else f'{args.res}-{args.sigma}-{args.edge}'
     print(f'Running {run_ID}')
 
-    rmaps = {}
-    spkes = {}
-    totls = {}
-    fpows = {}
+    rmaps, spkes, totls, autocorrs, fpautocorrs, cpols, fpcpols, speccorrs = {}, {}, {}, {}, {}, {}, {}, {}
     for cond in ['wty','wta','j20y','j20a']:
-        rmaps[cond] = []
-        spkes[cond] = []
-        totls[cond] = []
-        fpows[cond] = []
+        print(f'Running {cond}')
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
         pool_args = [(dir_name, args.res, args.sigma, args.shuffle, args.edge) for dir_name in dir_list]
         with mp.Pool(processes=32) as p:
             results = p.starmap(worker, pool_args)
-        rmaps[cond], spkes[cond], totls[cond], fpows[cond] = zip(*results)
+        rmaps[cond], spkes[cond], totls[cond], autocorrs[cond], fpautocorrs[cond], cpols[cond], fpcpols[cond], speccorrs[cond] = zip(*results)
 
     os.makedirs(f'data/rmaps/{run_ID}/',exist_ok=True)
     np.savez(f'data/rmaps/{run_ID}/rmaps.npz',**rmaps)
     np.savez(f'data/rmaps/{run_ID}/spikes.npz',**spkes)
     np.savez(f'data/rmaps/{run_ID}/totals.npz',**totls)
-    np.savez(f'data/rmaps/{run_ID}/fpowers.npz',**fpows)
+    np.savez(f'data/rmaps/{run_ID}/autocorr.npz',**autocorrs)
+    np.savez(f'data/rmaps/{run_ID}/fpautocorr.npz',**fpautocorrs)
+    np.savez(f'data/rmaps/{run_ID}/cpol.npz',**cpols)
+    np.savez(f'data/rmaps/{run_ID}/fpcpol.npz',**fpcpols)
+    np.savez(f'data/rmaps/{run_ID}/speccorr.npz',**speccorrs)
