@@ -183,17 +183,15 @@ class GridScorer(object):
     def run(self, options:object, activations:np.ndarray, perturbation:Union[Tuple[float,float,float,float],None]=None):
         arg = [(act,) for act in activations]
         with Pool(processes=64) as p:
-            results = p.starmap(self.calc_score_new,arg)
+            results = p.starmap(self.calc_score_fourier_new,arg)
     
-        max_freq, max_phase, score_60, score_90, cpol, fpcpol = zip(*results)
-        np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid60.npy',score_60)
-        np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid90.npy',score_90)
-        np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/cpol.npy',cpol)
-        np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/fpcpol.npy',fpcpol)
+        corr, fpcorr = zip(*results)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/corr.npy',corr)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/fpcorr.npy',fpcorr)
 
         with open(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid_stats.csv', 'w') as f:
             writer = csv.writer(f)
-            writer.writerow(['neuron_id','max_freq','max_phase','freq','power'])
+            writer.writerow(['neuron_id','freq','power'])
             for nid, line in enumerate(results):
                 for freq, power in zip(np.arange(10)[1:],line[-1][1:]):
                     writer.writerow([str(nid)] + [str(line[0]), str(line[1])] + [str(freq), str(power)])
@@ -205,7 +203,7 @@ class GridScorer(object):
         # Pad the ratemap to increase the resolution of the Fourier spectrogram.
         assert (new_res - res) % 2 == 0, "Unable to pad to this new_res"
         npad = (new_res - res) // 2
-        x = np.pad(x, ((npad,npad),(npad,npad)))
+        x = np.pad(x, ((npad,npad),(npad,npad))) # zero padding
 
         fpx  = np.abs(np.fft.fftshift(np.fft.fft2(x)))**2
 
@@ -216,7 +214,7 @@ class GridScorer(object):
         mat = fpx*(gfilter==1)
 
         # Normalize and remove noise
-        mat = mat / np.nanmax(mat)
+        mat = mat / (np.nanmax(mat)+1e-10)
         mat[mat < 0.25] = 0
         self.spectrum = mat
 
@@ -231,21 +229,57 @@ class GridScorer(object):
         cpol = self.calc_cpol(mat, 0, (mat.shape[0]/2)*0.7)
         cpol = scipy.ndimage.gaussian_filter(cpol,sigma=3,mode='wrap')
         ftcpol = np.fft.fft(cpol)
-        max_freq = np.argmax(abs(ftcpol)[1:len(ftcpol)//2])+1 # Find frequency with maximum power
-        max_phase = np.angle(ftcpol[max_freq],deg=True) # Find the corresponding phase
+        #max_freq = np.argmax(abs(ftcpol)[1:len(ftcpol)//2])+1 # Find frequency with maximum power
+        #max_phase = np.angle(ftcpol[max_freq],deg=True) # Find the corresponding phase
 
         score_norm = np.sum(cpol**2) - (cpol.sum()**2)/len(cpol) # Calculate the denominator for the grid score
-        score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol)) / (score_norm + 1e-10)
-        score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol)) / (score_norm + 1e-10)
+        #score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol)) / (score_norm + 1e-10)
+        #score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol)) / (score_norm + 1e-10)
 
         fpcpol = 2*(abs(ftcpol)**2)[:10]/len(cpol) / (score_norm + 1e-10)
 
         if return_as_dict:
-            return {'max_freq':max_freq,'max_phase':max_phase,
-                   'score_60':score_60,'score_90':score_90,
-                    'cpol':cpol, 'fpcpol':fpcpol}
+            return {'cpol':cpol, 'fpcpol':fpcpol, 'corr':corr}
         else:
-            return max_freq, max_phase, score_60, score_90, cpol, fpcpol, corr
+            return cpol, fpcpol, corr
+
+    def calc_score_fourier_new(self, x:np.ndarray, return_as_dict:bool=False, new_res:int=255):
+        assert x.shape[0] == x.shape[1]
+        res = x.shape[0]
+
+        # Pad the ratemap to increase the resolution of the Fourier spectrogram.
+        assert (new_res - res) % 2 == 0, "Unable to pad to this new_res"
+        npad = (new_res - res) // 2
+        x = np.pad(x, ((npad,npad),(npad,npad)), constant_values=x.mean()) # mean padding
+
+        fpx  = np.abs(np.fft.fftshift(np.fft.fft2(x)))**2
+
+        # Mask the center peak with a flipped Gaussian
+        xcoord,ycoord = np.meshgrid(np.arange(fpx.shape[0]), np.arange(fpx.shape[1]))
+        cx, cy = np.argwhere(fpx==fpx.max())[0]
+        gfilter = 1- np.exp(-((xcoord-cx)**2 + (ycoord-cy)**2)/2)
+        mat = fpx*(gfilter==1)
+
+        # Normalize and remove noise
+        mat = mat / (np.nanmax(mat)+1e-10)
+        mat[mat < 0.25] = 0
+        self.spectrum = mat
+
+        mask = self._get_mask(mat.shape,ratio=0.9,remove_center=True)
+        assert mat.shape == mask.shape
+        corr = []
+        for angle in range(360):
+            rot_mat = scipy.ndimage.rotate(mat, angle, reshape=False)
+            corr.append(np.corrcoef(mat[mask], rot_mat[mask])[0,1])
+        corr = np.array(corr)
+        ftcorr = np.fft.fft(corr)
+        score_norm = np.sum(corr**2) - (corr.sum()**2)/len(corr) # Calculate the denominator for the grid score
+        fpcorr = 2*(abs(ftcorr)**2)/len(ftcorr)/(score_norm + 1e-10)
+
+        if return_as_dict:
+            return {'corr':corr, 'fpcorr':fpcorr[:10]}
+        else:
+            return corr, fpcorr[:10]
 
     def calc_score_rot(self, x:np.ndarray, return_as_dict:bool=False):
         sac = self.calc_sac(x)
@@ -262,8 +296,8 @@ class GridScorer(object):
 
         corr = np.array(corr)
         ftcorr = np.fft.fft(corr)
-        #score_norm = np.sum(corr**2) # Calculate the denominator for the grid score; note that the zeroth component is included in the denominator
-        fpcorr = 2*(abs(ftcorr)**2)/len(ftcorr) #/score_norm
+        score_norm = np.sum(corr**2) # Calculate the denominator for the grid score; note that the zeroth component is included in the denominator
+        fpcorr = 2*(abs(ftcorr)**2)/len(ftcorr)/score_norm
 
         if return_as_dict:
             return {'corr':corr, 'fpcorr':fpcorr[:10]}
