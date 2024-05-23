@@ -90,7 +90,7 @@ if __name__ == '__main__':
     run_ID = f'{run_ID}-permuted' if args.permute else run_ID
     print(f'Running {run_ID}')
 
-    model_name = f'{run_ID}_{args.trn_bsize}-{args.val_bsize}-{args.tst_bsize}_{args.hsize}-{args.patch_size}_{args.lr}'
+    model_name = f'{run_ID}_{args.trn_bsize}-{args.val_bsize}-{args.tst_bsize}_{args.hsize}-{args.patch_size}_{args.lr}_{args.seed}'
     os.makedirs(f'data/classifier/{model_name}/',exist_ok=True)
 
     fname = f'data/rmaps/{run_ID}/rmaps.npz'
