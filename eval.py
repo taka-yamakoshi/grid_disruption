@@ -14,14 +14,11 @@ from trajectory_generator import TrajectoryGenerator
 from model import RNN
 from trainer import Trainer
 from utils import generate_dir_name, compute_ratemaps, plot_ratemaps, seed_everything
-from scores import GridScorer
-
-from multiprocessing import Pool
 
 import argparse
 
 def plot_trajectory(place_cells,options,model,trajectory_generator,perturbation=None):
-    inputs, pos, _ = trajectory_generator.get_test_batch()
+    inputs, pos, _ = trajectory_generator.get_test_batch(batch_size=100)
     pos = pos.cpu()
     pred_pos = place_cells.get_nearest_cell_pos(model.predict(inputs)).cpu()
     us = place_cells.us.cpu()
@@ -46,7 +43,7 @@ def plot_trajectory(place_cells,options,model,trajectory_generator,perturbation=
     plt.close()
 
 def plot_place_cells(place_cells,options,model,trajectory_generator,perturbation=None):
-    inputs, _, pc_outputs = trajectory_generator.get_test_batch()
+    inputs, _, pc_outputs = trajectory_generator.get_test_batch(batch_size=100)
     preds = model.predict(inputs)
     preds = preds.reshape(-1, options.Np).detach().cpu()
     pc_outputs = model.softmax(pc_outputs).reshape(-1, options.Np).cpu()
@@ -156,7 +153,17 @@ def plot_grid_cells_with_scores(options,score,activations,perturbation=None):
     plt.clf()
     plt.close()
 
+def worker(act):
+    from scores import GridScorer
+    scorer = GridScorer(0)
+    autocorr, fpautocorr = scorer.calc_score_rot(act)
+    _, _, speccorr, fpspeccorr = scorer.calc_score_fourier(act, new_res=255)
+    speccorr_new, fpspeccorr_new = scorer.calc_score_fourier_new(act, new_res=255)
+    return speccorr, fpspeccorr, speccorr_new, fpspeccorr_new, autocorr, fpautocorr
+
 if __name__=='__main__':
+    import multiprocessing as mp
+    mp.set_start_method("spawn")
     parser = argparse.ArgumentParser()
     parser.add_argument('--save_dir',
                         default='models/',
@@ -271,8 +278,8 @@ if __name__=='__main__':
     trajectory_generator = TrajectoryGenerator(options, place_cells)
 
     prtrb_list = [(0.0, 1.0, 0.0, 1.0)]
-    prtrb_list += [(vel_sigma, 1.0, 0.0, 1.0) for vel_sigma in np.linspace(0.05,0.1,6)]
-    prtrb_list += [(0.0, 1.0, hid_sigma, 1.0) for hid_sigma in np.linspace(0.05,0.1,6)]
+    prtrb_list += [(vel_sigma, 1.0, 0.0, 1.0) for vel_sigma in np.linspace(0.02,0.2,10)]
+    prtrb_list += [(0.0, 1.0, hid_sigma, 1.0) for hid_sigma in np.linspace(0.02,0.2,10)]
 
     for prtrb in prtrb_list:
         os.makedirs(f'images/{options.run_ID}/{generate_dir_name(options,prtrb)}',exist_ok=True)
@@ -292,7 +299,16 @@ if __name__=='__main__':
 
         activations = plot_grid_cells(options,model,trajectory_generator,res=options.res,n_avg=100,perturbation=prtrb)
 
-        scorer = GridScorer(options.res)
-        scorer.run(options,activations,prtrb)
+        pool_args = [(act,) for act in activations]
+        with mp.Pool(processes=32) as p:
+            results = p.starmap(worker, pool_args)
+        speccorr, fpspeccorr, speccorr_new, fpspeccorr_new, autocorr, fpautocorr = zip(*results)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,prtrb)}/speccorr.npy',speccorr)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,prtrb)}/fpspeccorr.npy',fpspeccorr)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,prtrb)}/speccorr_new.npy',speccorr_new)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,prtrb)}/fpspeccorr_new.npy',fpspeccorr_new)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,prtrb)}/autocorr.npy',autocorr)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,prtrb)}/fpautocorr.npy',fpautocorr)
+        np.save(f'data/{options.run_ID}/{generate_dir_name(options,prtrb)}/activations.npy',activations)
 
         print(f'Total time: {time.time()-start}')

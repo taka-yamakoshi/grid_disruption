@@ -78,9 +78,12 @@ if __name__ == '__main__':
     parser.add_argument('--patch_size', type=int, default=3)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--core_id', type=int, default=0)
     args = parser.parse_args()
 
     seed_everything(args.seed)
+
+    args.device = torch.device(f'cuda:{args.core_id}' if torch.cuda.is_available() else 'cpu')
 
     run_ID = f'{args.res}-{args.sigma}-{args.edge}'
     run_ID = f'{run_ID}-shuffled' if args.shuffle else run_ID
@@ -102,11 +105,10 @@ if __name__ == '__main__':
         depths=[2,2,6,2], hidden_act='gelu', image_size=args.res, num_labels=2)
     model = ConvNextV2ForImageClassification(config)
 
+    model.to(args.device)
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
-
-    model.to(torch.device('cuda'))
     trn_loss = []
     val_loss = []
     val_acc_list = []
@@ -117,7 +119,7 @@ if __name__ == '__main__':
             inputs, labels = data
             inputs = inputs.unsqueeze(1)
             optimizer.zero_grad()
-            outputs = model(inputs.to(torch.device('cuda')), labels.to(torch.device('cuda')))
+            outputs = model(inputs.to(args.device), labels.to(args.device))
             loss = outputs.loss
             loss.backward()
             optimizer.step()
@@ -125,22 +127,23 @@ if __name__ == '__main__':
             trn_loss_epoch += loss.item()
         trn_loss.append(trn_loss_epoch)
 
-        model.eval()
-        val_loss_epoch = 0.0
-        val_acc = []
-        for data in val_loader:
-            inputs, labels = data
-            inputs = inputs.unsqueeze(1)
-            with torch.no_grad():
-                outputs = model(inputs.to(torch.device('cuda')),labels.to(torch.device('cuda')))
-            pred = (F.softmax(outputs.logits,dim=-1)[:,1] > 0.5).to('cpu').to(float)
-            val_acc.extend(list((labels.to(float)==pred).numpy()))
+        if epoch%5==0:
+            model.eval()
+            val_loss_epoch = 0.0
+            val_acc = []
+            for data in val_loader:
+                inputs, labels = data
+                inputs = inputs.unsqueeze(1)
+                with torch.no_grad():
+                    outputs = model(inputs.to(args.device),labels.to(args.device))
+                pred = (F.softmax(outputs.logits,dim=-1)[:,1] > 0.5).to('cpu').to(float)
+                val_acc.extend(list((labels.to(float)==pred).numpy()))
 
-            loss = outputs.loss
-            val_loss_epoch += loss.item()
-        val_loss.append(val_loss_epoch)
-        val_acc_list.append(np.mean(val_acc))
-        print(f'Epoch {epoch} / Train Loss: {trn_loss_epoch}, Val Loss: {val_loss_epoch}, Val Acc: {np.mean(val_acc)}')
+                loss = outputs.loss
+                val_loss_epoch += loss.item()
+            val_loss.append(val_loss_epoch)
+            val_acc_list.append(np.mean(val_acc))
+            print(f'Epoch {epoch} / Train Loss: {trn_loss_epoch}, Val Loss: {val_loss_epoch}, Val Acc: {np.mean(val_acc)}')
 
     model.eval()
     tst_acc = []
@@ -148,7 +151,7 @@ if __name__ == '__main__':
         inputs, labels = data
         inputs = inputs.unsqueeze(1)
         with torch.no_grad():
-            outputs = model(inputs.to(torch.device('cuda')),labels.to(torch.device('cuda')))
+            outputs = model(inputs.to(args.device),labels.to(args.device))
         pred = (F.softmax(outputs.logits,dim=-1)[:,1] > 0.5).to('cpu').to(float)
         tst_acc.extend(list((labels.to(float)==pred).numpy()))
     print(f'Test Acc: {np.mean(tst_acc)}')

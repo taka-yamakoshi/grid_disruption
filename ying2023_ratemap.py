@@ -44,13 +44,13 @@ def worker(dir_name, cond, res, sigma, shuffle, permute, edge):
     from scores import GridScorer
     scorer = GridScorer(0) # get the scorer just to calculate sac
     autocorr, fpautocorr = scorer.calc_score_rot(rmap)
-    cpol, fpcpol, speccorr = scorer.calc_score_fourier(rmap, new_res=255)
+    cpol, fpcpol, speccorr, fpspeccorr = scorer.calc_score_fourier(rmap, new_res=255)
 
     speccorr_new, fpspeccorr_new = scorer.calc_score_fourier_new(rmap, new_res=255)
 
     fname = dir_name.replace("../Code-for-Ying-et-al.-2023/extracted_all/","").replace(cond+"/","")
     nid = fname.split("-")[0]
-    return rmap, spike, total, autocorr, fpautocorr, cpol, fpcpol, speccorr, speccorr_new, fpspeccorr_new, int(data['animal']), int(data['age']), int(nid)
+    return rmap, spike, total, autocorr, fpautocorr, cpol, fpcpol, speccorr, fpspeccorr, speccorr_new, fpspeccorr_new, int(data['animal']), int(data['age']), int(nid)
 
 if __name__ == '__main__':
     import multiprocessing as mp
@@ -69,14 +69,14 @@ if __name__ == '__main__':
     run_ID = f'{run_ID}-permuted' if args.permute else run_ID
     print(f'Running {run_ID}')
 
-    rmaps, spkes, totls, autocorrs, fpautocorrs, cpols, fpcpols, speccorrs, speccorrs_new, fpspeccorrs_new, animals, ages, nids = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+    rmaps, spkes, totls, autocorrs, fpautocorrs, cpols, fpcpols, speccorrs, fpspeccorrs, speccorrs_new, fpspeccorrs_new, animals, ages, nids = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
     for cond in ['wty','wta','j20y','j20a']:
         print(f'Running {cond}')
         dir_list = glob.glob(f'../Code-for-Ying-et-al.-2023/extracted_all/{cond}/*')
         pool_args = [(dir_name, cond, args.res, args.sigma, args.shuffle, args.permute, args.edge) for dir_name in dir_list]
         with mp.Pool(processes=32) as p:
             results = p.starmap(worker, pool_args)
-        rmaps[cond], spkes[cond], totls[cond], autocorrs[cond], fpautocorrs[cond], cpols[cond], fpcpols[cond], speccorrs[cond], speccorrs_new[cond], fpspeccorrs_new[cond], animals[cond], ages[cond], nids[cond] = zip(*results)
+        rmaps[cond], spkes[cond], totls[cond], autocorrs[cond], fpautocorrs[cond], cpols[cond], fpcpols[cond], speccorrs[cond], fpspeccorrs[cond], speccorrs_new[cond], fpspeccorrs_new[cond], animals[cond], ages[cond], nids[cond] = zip(*results)
 
     os.makedirs(f'data/rmaps/{run_ID}/',exist_ok=True)
     np.savez(f'data/rmaps/{run_ID}/rmaps.npz',**rmaps)
@@ -87,6 +87,7 @@ if __name__ == '__main__':
     np.savez(f'data/rmaps/{run_ID}/cpol.npz',**cpols)
     np.savez(f'data/rmaps/{run_ID}/fpcpol.npz',**fpcpols)
     np.savez(f'data/rmaps/{run_ID}/speccorr.npz',**speccorrs)
+    np.savez(f'data/rmaps/{run_ID}/fpspeccorr.npz',**fpspeccorrs)
     np.savez(f'data/rmaps/{run_ID}/speccorr_new.npz',**speccorrs_new)
     np.savez(f'data/rmaps/{run_ID}/fpspeccorr_new.npz',**fpspeccorrs_new)
     np.savez(f'data/rmaps/{run_ID}/animal.npz',**animals)

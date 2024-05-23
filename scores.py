@@ -225,23 +225,20 @@ class GridScorer(object):
             rot_mat = scipy.ndimage.rotate(mat, angle, reshape=False)
             corr.append(np.corrcoef(mat[mask], rot_mat[mask])[0,1])
         corr = np.array(corr)
+        ftcorr = np.fft.fft(corr)
+        score_norm = np.sum(corr**2) - (corr.sum()**2)/len(corr) # Calculate the denominator for the grid score
+        fpcorr = 2*(abs(ftcorr)**2)[:10]/len(corr) / (score_norm + 1e-10)
 
         cpol = self.calc_cpol(mat, 0, (mat.shape[0]/2)*0.7)
         cpol = scipy.ndimage.gaussian_filter(cpol,sigma=3,mode='wrap')
         ftcpol = np.fft.fft(cpol)
-        #max_freq = np.argmax(abs(ftcpol)[1:len(ftcpol)//2])+1 # Find frequency with maximum power
-        #max_phase = np.angle(ftcpol[max_freq],deg=True) # Find the corresponding phase
-
         score_norm = np.sum(cpol**2) - (cpol.sum()**2)/len(cpol) # Calculate the denominator for the grid score
-        #score_60 = (2 * (abs(ftcpol[6])**2) / len(cpol)) / (score_norm + 1e-10)
-        #score_90 = (2 * (abs(ftcpol[4])**2) / len(cpol)) / (score_norm + 1e-10)
-
         fpcpol = 2*(abs(ftcpol)**2)[:10]/len(cpol) / (score_norm + 1e-10)
 
         if return_as_dict:
-            return {'cpol':cpol, 'fpcpol':fpcpol, 'corr':corr}
+            return {'cpol':cpol, 'fpcpol':fpcpol, 'corr':corr, 'fpcorr':fpcorr}
         else:
-            return cpol, fpcpol, corr
+            return cpol, fpcpol, corr, fpcorr
 
     def calc_score_fourier_new(self, x:np.ndarray, return_as_dict:bool=False, new_res:int=255):
         assert x.shape[0] == x.shape[1]

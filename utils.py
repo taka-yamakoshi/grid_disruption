@@ -99,7 +99,7 @@ def compute_ratemaps(model, trajectory_generator, options, res=20, n_avg=None, N
     counts  = np.zeros([res, res])
 
     for index in range(n_avg):
-        inputs, pos_batch, _ = trajectory_generator.get_test_batch()
+        inputs, pos_batch, _ = trajectory_generator.get_test_batch(batch_size=options.batch_size)
         g_batch = model.g(inputs).detach().cpu().numpy()
         
         pos_batch = np.reshape(pos_batch.cpu(), [-1, 2])
