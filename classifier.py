@@ -30,23 +30,35 @@ def get_data_loader(
         rmaps:dict,
         split:Tuple[int,int,int] = [800,50,50],
         batch_sizes: Tuple[int,int,int] = [64,100,100],
+        csize: int = 1,
         seed: int = 1234):
     # randomly select data
     rng = np.random.default_rng(seed)
     wtdata = rmaps['wta'][rng.permutation(len(rmaps['wta']))[:np.sum(split)]]
     tgdata = rmaps['j20a'][rng.permutation(len(rmaps['j20a']))[:np.sum(split)]]
 
+    # introduce channel dimension
+    assert wtdata.shape[0]%csize==0 & tgdata.shape[0]%csize==0, 'csize has to divide number of samples'
+    wtdata = wtdata.reshape(wtdata.shape[0]//csize,csize,*wtdata.shape[1:])
+    tgdata = tgdata.reshape(tgdata.shape[0]//csize,csize,*tgdata.shape[1:])
+
     # train data
-    trn_data = np.vstack([wtdata[:split[0]],tgdata[:split[0]]])
-    trn_labs = np.array([0]*split[0] + [1]*split[0])
+    assert split[0]%csize==0, 'train split is not multiple of csize'
+    trn_split = split[0]//csize
+    trn_data = np.vstack([wtdata[:trn_split],tgdata[:trn_split]])
+    trn_labs = np.array([0]*trn_split + [1]*trn_split)
 
     # val data
-    val_data = np.vstack([wtdata[split[0]:(split[0]+split[1])],tgdata[split[0]:(split[0]+split[1])]])
-    val_labs = np.array([0]*split[1] + [1]*split[1])
+    assert split[1]%csize==0, 'val split is not multiple of csize'
+    val_split = split[1]//csize
+    val_data = np.vstack([wtdata[trn_split:(trn_split+val_split)],tgdata[trn_split:(trn_split+val_split)]])
+    val_labs = np.array([0]*val_split + [1]*val_split)
 
     # test data
-    tst_data = np.vstack([wtdata[(split[0]+split[1]):],tgdata[(split[0]+split[1]):]])
-    tst_labs = np.array([0]*split[2] + [1]*split[2])
+    assert split[2]%csize==0, 'test split is not multiple of csize'
+    tst_split = split[2]//csize
+    tst_data = np.vstack([wtdata[(trn_split+val_split):],tgdata[(trn_split+val_split):]])
+    tst_labs = np.array([0]*tst_split + [1]*tst_split)
 
     assert trn_data.shape[0]==trn_labs.shape[0]
     assert val_data.shape[0]==val_labs.shape[0]
@@ -76,6 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--tst_bsize', type=int, default=100)
     parser.add_argument('--hsize', type=int, default=20)
     parser.add_argument('--patch_size', type=int, default=3)
+    parser.add_argument('--csize', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--core_id', type=int, default=0)
@@ -90,17 +103,17 @@ if __name__ == '__main__':
     run_ID = f'{run_ID}-permuted' if args.permute else run_ID
     print(f'Running {run_ID}')
 
-    model_name = f'{run_ID}_{args.trn_bsize}-{args.val_bsize}-{args.tst_bsize}_{args.hsize}-{args.patch_size}_{args.lr}_{args.seed}'
+    model_name = f'{run_ID}_{args.trn_bsize}-{args.val_bsize}-{args.tst_bsize}_{args.hsize}-{args.patch_size}-{args.csize}_{args.lr}_{args.seed}'
     os.makedirs(f'data/classifier/{model_name}/',exist_ok=True)
 
     fname = f'data/rmaps/{run_ID}/rmaps.npz'
     print(f'Loaded {run_ID} --- Last modified at {time.ctime(os.stat(fname).st_mtime)}')
     rmaps = np.load(fname)
 
-    trn_loader, val_loader, tst_loader = get_data_loader(rmaps, split=[800,50,50], batch_sizes=[args.trn_bsize, args.val_bsize, args.tst_bsize], seed=args.seed)
+    trn_loader, val_loader, tst_loader = get_data_loader(rmaps, split=[800,50,50], batch_sizes=[args.trn_bsize, args.val_bsize, args.tst_bsize], csize=args.csize, seed=args.seed)
 
     config = ConvNextV2Config(
-        num_channels=1, patch_size=args.patch_size, num_stages=4,
+        num_channels=args.csize, patch_size=args.patch_size, num_stages=4,
         hidden_sizes=[args.hsize,2*args.hsize,4*args.hsize,8*args.hsize],
         depths=[2,2,6,2], hidden_act='gelu', image_size=args.res, num_labels=2)
     model = ConvNextV2ForImageClassification(config)
@@ -117,7 +130,9 @@ if __name__ == '__main__':
         trn_loss_epoch = 0.0
         for data in trn_loader:
             inputs, labels = data
-            inputs = inputs.unsqueeze(1)
+            #inputs = inputs.reshape(inputs.shape[0]//args.csize,args.csize,*inputs.shape[1:])
+            print(inputs.shape)
+            exit()
             optimizer.zero_grad()
             outputs = model(inputs.to(args.device), labels.to(args.device))
             loss = outputs.loss
