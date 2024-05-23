@@ -226,19 +226,19 @@ class GridScorer(object):
             corr.append(np.corrcoef(mat[mask], rot_mat[mask])[0,1])
         corr = np.array(corr)
         ftcorr = np.fft.fft(corr)
-        score_norm = np.sum(corr**2) - (corr.sum()**2)/len(corr) # Calculate the denominator for the grid score
-        fpcorr = 2*(abs(ftcorr)**2)[:10]/len(corr) / (score_norm + 1e-10)
+        score_norm = np.sum(corr**2) #- (corr.sum()**2)/len(corr) # Calculate the denominator for the grid score
+        fpcorr = 2*(abs(ftcorr)**2)/len(corr) / (score_norm + 1e-10)
 
         cpol = self.calc_cpol(mat, 0, (mat.shape[0]/2)*0.7)
         cpol = scipy.ndimage.gaussian_filter(cpol,sigma=3,mode='wrap')
         ftcpol = np.fft.fft(cpol)
-        score_norm = np.sum(cpol**2) - (cpol.sum()**2)/len(cpol) # Calculate the denominator for the grid score
-        fpcpol = 2*(abs(ftcpol)**2)[:10]/len(cpol) / (score_norm + 1e-10)
+        score_norm = np.sum(cpol**2) #- (cpol.sum()**2)/len(cpol) # Calculate the denominator for the grid score
+        fpcpol = 2*(abs(ftcpol)**2)/len(cpol) / (score_norm + 1e-10)
 
         if return_as_dict:
-            return {'cpol':cpol, 'fpcpol':fpcpol, 'corr':corr, 'fpcorr':fpcorr}
+            return {'cpol':cpol, 'fpcpol':fpcpol[:10], 'corr':corr, 'fpcorr':fpcorr[:10]}
         else:
-            return cpol, fpcpol, corr, fpcorr
+            return cpol, fpcpol[:10], corr, fpcorr[:10]
 
     def calc_score_fourier_new(self, x:np.ndarray, return_as_dict:bool=False, new_res:int=255):
         assert x.shape[0] == x.shape[1]
@@ -270,8 +270,8 @@ class GridScorer(object):
             corr.append(np.corrcoef(mat[mask], rot_mat[mask])[0,1])
         corr = np.array(corr)
         ftcorr = np.fft.fft(corr)
-        score_norm = np.sum(corr**2) - (corr.sum()**2)/len(corr) # Calculate the denominator for the grid score
-        fpcorr = 2*(abs(ftcorr)**2)/len(ftcorr)/(score_norm + 1e-10)
+        score_norm = np.sum(corr**2) #- (corr.sum()**2)/len(corr) # Calculate the denominator for the grid score
+        fpcorr = 2*(abs(ftcorr)**2)/len(corr) / (score_norm + 1e-10)
 
         if return_as_dict:
             return {'corr':corr, 'fpcorr':fpcorr[:10]}
@@ -294,7 +294,7 @@ class GridScorer(object):
         corr = np.array(corr)
         ftcorr = np.fft.fft(corr)
         score_norm = np.sum(corr**2) # Calculate the denominator for the grid score; note that the zeroth component is included in the denominator
-        fpcorr = 2*(abs(ftcorr)**2)/len(ftcorr)/score_norm
+        fpcorr = 2*(abs(ftcorr)**2)/len(corr) / (score_norm + 1e-10)
 
         if return_as_dict:
             return {'corr':corr, 'fpcorr':fpcorr[:10]}
