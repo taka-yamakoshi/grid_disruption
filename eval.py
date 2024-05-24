@@ -228,8 +228,8 @@ if __name__=='__main__':
         prtrb_list += [(0.0, hswsgm) for hswsgm in np.linspace(0.02,0.2,10)]
     elif options.prtrb_type == 'weight_mask':
         prtrb_list = [(0.0, 0.0)]
-        prtrb_list += [(vswthr, 0.0) for vswthr in np.linspace(0.1,0.8,8)]
-        prtrb_list += [(0.0, hswthr) for hswthr in np.linspace(0.001,0.008,8)]
+        prtrb_list += [(vswthr, 0.0) for vswthr in np.linspace(0.1,1.0,10)]
+        prtrb_list += [(0.0, hswthr) for hswthr in np.linspace(0.001,0.01,10)]
 
     for prtrb in prtrb_list:
         os.makedirs(f'images/{options.run_ID}/{generate_dir_name(options,prtrb)}',exist_ok=True)
