@@ -194,6 +194,10 @@ if __name__=='__main__':
                         default=35,
                         type=int,
                         help='resolution for the rate map')
+    parser.add_argument('--prtrb_type',
+                        default='activation',
+                        type=str,
+                        help='type of perturbation')
 
     options = parser.parse_args()
     seed_everything(options.seed)
@@ -214,9 +218,18 @@ if __name__=='__main__':
 
     trajectory_generator = TrajectoryGenerator(options, place_cells)
 
-    prtrb_list = [(0.0, 1.0, 0.0, 1.0)]
-    prtrb_list += [(vel_sigma, 1.0, 0.0, 1.0) for vel_sigma in np.linspace(0.02,0.2,10)]
-    prtrb_list += [(0.0, 1.0, hid_sigma, 1.0) for hid_sigma in np.linspace(0.02,0.2,10)]
+    if options.prtrb_type == 'activation':
+        prtrb_list = [(0.0, 1.0, 0.0, 1.0)]
+        prtrb_list += [(vel_sigma, 1.0, 0.0, 1.0) for vel_sigma in np.linspace(0.02,0.2,10)]
+        prtrb_list += [(0.0, 1.0, hid_sigma, 1.0) for hid_sigma in np.linspace(0.02,0.2,10)]
+    elif options.prtrb_type == 'weight_noise':
+        prtrb_list = [(0.0, 0.0)]
+        prtrb_list += [(vswsgm, 0.0) for vswsgm in np.linspace(0.02,0.2,10)]
+        prtrb_list += [(0.0, hswsgm) for hswsgm in np.linspace(0.02,0.2,10)]
+    elif options.prtrb_type == 'weight_mask':
+        prtrb_list = [(0.0, 0.0)]
+        prtrb_list += [(vswthr, 0.0) for vswthr in np.linspace(0.1,0.8,8)]
+        prtrb_list += [(0.0, hswthr) for hswthr in np.linspace(0.001,0.008,8)]
 
     for prtrb in prtrb_list:
         os.makedirs(f'images/{options.run_ID}/{generate_dir_name(options,prtrb)}',exist_ok=True)
@@ -224,17 +237,24 @@ if __name__=='__main__':
 
         start = time.time()
 
-        if prtrb is not None:
-            model.vel_sigma = prtrb[0]
-            model.vel_scale = prtrb[1]
-            model.hid_sigma = prtrb[2]
-            model.hid_scale = prtrb[3]
+        with torch.no_grad():
+            if options.prtrb_type=='activation' and prtrb is not None:
+                model.vel_sigma = prtrb[0]
+                model.vel_scale = prtrb[1]
+                model.hid_sigma = prtrb[2]
+                model.hid_scale = prtrb[3]
+            elif options.prtrb_type=='weight_noise' and prtrb is not None:
+                model.vel_stream.weight += prtrb[0] * torch.randn_like(model.vel_stream.weight)
+                model.hid_stream.weight += prtrb[1] * torch.randn_like(model.hid_stream.weight)
+            elif options.prtrb_type=='weight_mask' and prtrb is not None:
+                model.vel_stream.weight[abs(model.vel_stream.weight)<prtrb[0]] = 0.0
+                model.hid_stream.weight[abs(model.hid_stream.weight)<prtrb[1]] = 0.0
 
-        plot_trajectory(place_cells,options,model,trajectory_generator,prtrb)
+            plot_trajectory(place_cells,options,model,trajectory_generator,prtrb)
 
-        plot_place_cells(place_cells,options,model,trajectory_generator,prtrb)
+            plot_place_cells(place_cells,options,model,trajectory_generator,prtrb)
 
-        activations = plot_grid_cells(options,model,trajectory_generator,res=options.res,n_avg=100,perturbation=prtrb)
+            activations = plot_grid_cells(options,model,trajectory_generator,res=options.res,n_avg=100,perturbation=prtrb)
 
         pool_args = [(act,) for act in activations]
         with mp.Pool(processes=32) as p:

@@ -7,13 +7,32 @@ import cv2
 import numpy as np
 import torch
 
-def generate_dir_name(options:object,perturbation:Union[Tuple[float,float,float,float],None]=None):
-    if perturbation is None:
-        vsgm, vscl, hsgm, hscl = options.vel_sigma, options.vel_scale, options.hid_sigma, options.hid_scale
-        return f'orgnl_vsgm_{vsgm:.2g}_vscl_{vscl:.2g}_hsgm_{hsgm:.2g}_hscl_{hscl:.2g}'
+def generate_dir_name(options:object,
+                      perturbation:Union[Tuple[float,float,float,float],Tuple[float,float],None]=None):
+    if options.prtrb_type == 'activation':
+        if perturbation is None:
+            vsgm, vscl, hsgm, hscl = options.vel_sigma, options.vel_scale, options.hid_sigma, options.hid_scale
+            return f'orgnl_vsgm_{vsgm:.2g}_vscl_{vscl:.2g}_hsgm_{hsgm:.2g}_hscl_{hscl:.2g}'
+        else:
+            vsgm, vscl, hsgm, hscl = perturbation
+            return f'prtrb_vsgm_{vsgm:.2g}_vscl_{vscl:.2g}_hsgm_{hsgm:.2g}_hscl_{hscl:.2g}'
+    elif options.prtrb_type == 'weight_noise':
+        if perturbation is None:
+            vswsgm, hswsgm = 0.0, 0.0
+            return f'orgnl_vswsgm_{vswsgm:.2g}_hswsgm_{hswsgm:.2g}'
+        else:
+            vswsgm, hswsgm = perturbation
+            return f'prtrb_vswsgm_{vswsgm:.2g}_hswsgm_{hswsgm:.2g}'
+    elif options.prtrb_type == 'weight_mask':
+        if perturbation is None:
+            vswthr, hswthr = 0.0, 0.0
+            return f'orgnl_vswthr_{vswthr:.2g}_hswthr_{hswthr:.2g}'
+        else:
+            vswthr, hswthr = perturbation
+            return f'prtrb_vswthr_{vswthr:.2g}_hswthr_{hswthr:.2g}'
     else:
-        vsgm, vscl, hsgm, hscl = perturbation
-        return f'prtrb_vsgm_{vsgm:.2g}_vscl_{vscl:.2g}_hsgm_{hsgm:.2g}_hscl_{hscl:.2g}'
+        raise NotImplementedError()
+
     
 def generate_run_ID(options):
     ''' 
