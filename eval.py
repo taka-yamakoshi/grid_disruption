@@ -90,69 +90,6 @@ def plot_grid_cells(options,model,trajectory_generator,res,n_avg,perturbation=No
 
     return activations
 
-def calc_grid_score(options,activations,perturbation=None):
-    res = activations.shape[-1]
-
-    starts = [0.2] * 10
-    ends = np.linspace(0.4, 1.0, num=10)
-    box_width=options.box_width
-    box_height=options.box_height
-    coord_range=((-box_width/2, box_width/2), (-box_height/2, box_height/2))
-    masks_parameters = zip(starts, ends.tolist())
-    scorer = GridScorer(res, coord_range, masks_parameters)
-
-    arg = [(act,0) for act in activations]
-    with Pool(processes=64) as p:
-        results = p.starmap(scorer.get_scores,arg)
-
-    score_60, score_90, max_60_mask, max_90_mask, sac, max_60_ind = zip(*results)
-
-    np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid60.npy',score_60)
-    np.save(f'data/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid90.npy',score_90)
-
-    return score_60, score_90
-
-def plot_grid_cells_with_scores(options,score,activations,perturbation=None):
-    idxs = np.flip(np.argsort(score))
-    Ng = options.Ng
-
-    # Plot high grid scores
-    n_plot = 128
-    plt.figure(figsize=(16,4*n_plot//8**2))
-    rm_fig = plot_ratemaps(activations[idxs], n_plot, smooth=True)
-    plt.imshow(rm_fig)
-    plt.suptitle('Grid scores '+str(np.round(score[idxs[0]], 2))
-                +' -- '+ str(np.round(score[idxs[n_plot]], 2)),
-                fontsize=16)
-    plt.axis('off')
-    plt.savefig(f"images/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid_cell_grid_score_high.pdf")
-    plt.clf()
-    plt.close()
-
-    # Plot medium grid scores
-    plt.figure(figsize=(16,4*n_plot//8**2))
-    rm_fig = plot_ratemaps(activations[idxs[Ng//4:]], n_plot, smooth=True)
-    plt.imshow(rm_fig)
-    plt.suptitle('Grid scores '+str(np.round(score[idxs[Ng//2]], 2))
-                +' -- ' + str(np.round(score[idxs[Ng//2+n_plot]], 2)),
-                fontsize=16)
-    plt.axis('off')
-    plt.savefig(f"images/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid_cell_grid_score_interm.pdf")
-    plt.clf()
-    plt.close()
-
-    # Plot low grid scores
-    plt.figure(figsize=(16,4*n_plot//8**2))
-    rm_fig = plot_ratemaps(activations[np.flip(idxs)], n_plot, smooth=True)
-    plt.imshow(rm_fig)
-    plt.suptitle('Grid scores '+str(np.round(score[idxs[-n_plot]], 2))
-                +' -- ' + str(np.round(score[idxs[-1]], 2)),
-                fontsize=16)
-    plt.axis('off')
-    plt.savefig(f"images/{options.run_ID}/{generate_dir_name(options,perturbation)}/grid_cell_grid_score_low.pdf")
-    plt.clf()
-    plt.close()
-
 def worker(act):
     from scores import GridScorer
     scorer = GridScorer(0)
