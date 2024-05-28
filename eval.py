@@ -224,8 +224,8 @@ if __name__=='__main__':
         prtrb_list += [(0.0, 1.0, hid_sigma, 1.0) for hid_sigma in np.linspace(0.02,0.2,10)]
     elif options.prtrb_type == 'weight_noise':
         prtrb_list = [(0.0, 0.0)]
-        prtrb_list += [(vswsgm, 0.0) for vswsgm in np.linspace(0.02,0.2,10)]
-        prtrb_list += [(0.0, hswsgm) for hswsgm in np.linspace(0.02,0.2,10)]
+        prtrb_list += [(vswsgm, 0.0) for vswsgm in np.linspace(0.2,1.0,5)]
+        prtrb_list += [(0.0, hswsgm) for hswsgm in np.linspace(0.01,0.05,5)]
     elif options.prtrb_type == 'weight_mask':
         prtrb_list = [(0.0, 0.0)]
         prtrb_list += [(vswthr, 0.0) for vswthr in np.linspace(0.1,1.0,10)]
