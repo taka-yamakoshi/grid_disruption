@@ -1,6 +1,6 @@
 # grid_disruption
 
-## Experimental Data Analysis
+## I. Experimental Data Analysis
 Intended directory structure:
 ```
   ├── Code-for-Ying-et-al.-2023
@@ -30,7 +30,7 @@ Run `ying2023_ratemap.py` to calculate the ratemaps as well as different metrics
 The results are stored inside the `data` directory.
 
 ### Figure Production
-`analysis_methode.ipynb`: Figures to help explain the method
+`analysis_method.ipynb`: Figures to help explain the method
 `analysis_heatmap.ipynb`: Heatmap
 `analysis_ecdf.ipynb`: Empirical Cumulative Distributions
 
@@ -39,7 +39,7 @@ Run `classifier.py` to train a convolutional neural network.
 
 `analysis_cnn.ipynb` produces corresponding figures.
 
-## RNN Perturbation Analysis
+## II. RNN Perturbation Analysis
 1. Train the RNN by running `main.py` (example shell script: `run.sh`).
 2. Run `eval.py` to perform perturbations (example shell script: `eval.sh`).
 3. `analysis_rnn.ipynb` produces corresponding figures.
